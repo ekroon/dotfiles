@@ -1,0 +1,3 @@
+eval "$(atuin init zsh)
+
+source <(/usr/local/bin/starship init zsh --print-full-init)

@@ -1,0 +1,8 @@
+{{- if .codespaces -}}
+#!/bin/bash
+
+brew bundle --no-lock --file=/dev/stdin <<EOF
+brew "starship"
+brew "atuin"
+EOF
+{{ end -}}
