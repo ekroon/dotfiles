@@ -1,4 +1,6 @@
+{{- if .codespaces -}}
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+{{ end -}}
 
 export SHELL=$(which zsh)
 
