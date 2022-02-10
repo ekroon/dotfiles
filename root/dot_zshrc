@@ -1,4 +1,7 @@
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+export ATUIN_NOBIND="true"
 eval "$(atuin init zsh)"
+bindkey '^r' _atuin_search_widget
 
 source <(starship init zsh --print-full-init)
