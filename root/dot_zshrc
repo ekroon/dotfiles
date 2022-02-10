@@ -1,5 +1,7 @@
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
+export SHELL=$(which zsh)
+
 export ATUIN_NOBIND="true"
 eval "$(atuin init zsh)"
 bindkey '^r' _atuin_search_widget
