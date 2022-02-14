@@ -1,10 +1,12 @@
 {{- $codespaces:= env "CODESPACES" | not | not -}}
+{{- $dotcom:= eq (env "GITHUB_REPOSITORY") "github/github" -}}
 
 sourceDir = {{ .chezmoi.sourceDir | quote }}
 
 [data]
     name = "Erwin Kroon"
     codespaces = {{ $codespaces }}
+    dotcom = {{ $dotcom }}
     {{- if $codespaces }}{{/* Codespaces dotfiles setup is non-interactive, so set an email address */}}
     email = "ekroon@github.com"
     {{- else }}{{/* Interactive setup, so prompt for an email address */}}
