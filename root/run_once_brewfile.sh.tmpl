@@ -5,9 +5,21 @@ eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 {{ end }}
 {{ if .codespaces -}}
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+if [ -n "${GH_GH_PAT}" ]; then
+  chezmoi git -- remote set-url --push origin https://username:"${GH_GH_PAT}"@github.com/ekroon/dotfiles
+fi
 {{ end }}
 
 brew bundle --no-lock --file=/dev/stdin <<EOF
 brew "starship"
 brew "atuin"
 EOF
+
+# Check if ${ATUIN_USERNAME}, ${ATUIN_PASSWORD} and ${ATUIN_KEY} are set
+if [ -z "${ATUIN_USERNAME}" ] || [ -z "${ATUIN_PASSWORD}" ] || [ -z "${ATUIN_KEY}" ]; then
+  echo "ATUIN_USERNAME, ATUIN_PASSWORD and ATUIN_KEY must be set for atuin initialization"
+else
+  echo "Initializing atuin"
+  atuin login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"  
+fi
