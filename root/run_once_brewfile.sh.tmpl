@@ -7,7 +7,10 @@ eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 if [ -n "${GH_GH_PAT}" ]; then
+  echo "Set chezmoi remote to use GH_PAT_PAT"
   chezmoi git -- remote set-url --push origin https://username:"${GH_GH_PAT}"@github.com/ekroon/dotfiles
+else
+  echo "Skipping setting chezmoi remote to use GH_PAT_PAT"
 fi
 {{ end }}
 
@@ -21,5 +24,5 @@ if [ -z "${ATUIN_USERNAME}" ] || [ -z "${ATUIN_PASSWORD}" ] || [ -z "${ATUIN_KEY
   echo "ATUIN_USERNAME, ATUIN_PASSWORD and ATUIN_KEY must be set for atuin initialization"
 else
   echo "Initializing atuin"
-  atuin login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"  
+  atuin login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"
 fi
