@@ -12,4 +12,12 @@ export ATUIN_NOBIND="true"
 eval "$(atuin init zsh)"
 bindkey '^r' _atuin_search_widget
 
-source <(starship init zsh --print-full-init)
+if command -v starship &> /dev/null
+then
+  source <(starship init zsh --print-full-init)
+fi
+
+if command -v direnv &> /dev/null
+then
+  eval "$(direnv hook zsh)"
+fi
