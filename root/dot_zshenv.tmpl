@@ -1,0 +1,24 @@
+typeset -U path PATH
+
+# create function to add to path if path exists
+function add_to_path() {
+  if [[ -d $1 ]]; then
+      path+=("$1")
+  fi
+}
+
+add_to_path "$HOME/bin"
+add_to_path "$HOME/.local/bin"
+add_to_path "$HOME/.msrustup/bin"
+
+{{ if .codespaces -}}
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+{{ else if eq .chezmoi.os "darwin" -}}
+eval "$(/usr/local/bin/brew shellenv)"
+
+{{ end -}}
+
+if [ -f "$HOME/.cargo/env" ]; then
+  . "$HOME/.cargo/env"
+fi
