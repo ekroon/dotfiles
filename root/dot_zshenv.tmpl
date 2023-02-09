@@ -1,6 +1,5 @@
 typeset -U path PATH
 
-# create function to add to path if path exists
 function add_to_path() {
   if [[ -d $1 ]]; then
       path+=("$1")
