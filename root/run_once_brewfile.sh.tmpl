@@ -14,7 +14,7 @@ else
 fi
 {{ end }}
 
-brew bundle --no-lock --file=/dev/stdin <<EOF
+brew bundle --no-lock -v --file=/dev/stdin <<EOF
 brew "starship"
 brew "atuin"
 EOF
