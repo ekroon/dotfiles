@@ -13,6 +13,11 @@ then
   source <(starship init zsh --print-full-init)
 fi
 
+ASDF="/usr/local/opt/asdf/libexec/asdf.sh"
+if [[ -f "$ASDF" ]]; then
+  . "$ASDF"
+fi 
+
 if command -v direnv &> /dev/null
 then
   eval "$(direnv hook zsh)"
