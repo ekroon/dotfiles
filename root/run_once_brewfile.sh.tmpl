@@ -1,9 +1,6 @@
 #!/bin/bash
-{{ if and .codespaces (not .dotcom) -}}
-CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-{{ end }}
 {{ if .codespaces -}}
+CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 if [ -n "${GH_GH_PAT}" ]; then
