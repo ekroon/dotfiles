@@ -31,3 +31,6 @@ search_mode = "fulltext"
 
 ## Automatically run command after selecting
 enter_accept = true
+
+[sync]
+records = true
