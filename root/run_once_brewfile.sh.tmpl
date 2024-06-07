@@ -22,4 +22,5 @@ if [ -z "${ATUIN_USERNAME}" ] || [ -z "${ATUIN_PASSWORD}" ] || [ -z "${ATUIN_KEY
 else
   echo "Initializing atuin"
   atuin login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"
+  atuin sync
 fi
