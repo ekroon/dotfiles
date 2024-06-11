@@ -10,6 +10,11 @@ then
   plugins+=starship
 fi
 
+if command -v rails &> /dev/null
+then
+  plugins+=rails
+fi
+
 source $ZSH/oh-my-zsh.sh
 
 export SHELL=$(which zsh)
