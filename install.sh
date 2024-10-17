@@ -22,6 +22,6 @@ if [ ! -e /home/vscode/.config/home-manager ]; then
   ln -s "${script_dir}/nix" /home/vscode/.config/home-manager
 fi
 
-nix run '/home/vscode/.config/home-manager/#homeConfigurations."vscode".activationPackage'
+nix run "${script_dir}/nix#homeConfigurations.\"vscode\".activationPackage"
 
 exec chezmoi init --apply "--source=$script_dir"
