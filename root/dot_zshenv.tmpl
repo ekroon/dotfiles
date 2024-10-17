@@ -10,10 +10,7 @@ add_to_path "$HOME/bin"
 add_to_path "$HOME/.local/bin"
 add_to_path "$HOME/.msrustup/bin"
 
-{{ if .codespaces -}}
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-
-{{ else if eq .chezmoi.os "darwin" -}}
+{{ if eq .chezmoi.os "darwin" -}}
 eval "$(/usr/local/bin/brew shellenv)"
 
 {{ end -}}
@@ -21,3 +18,5 @@ eval "$(/usr/local/bin/brew shellenv)"
 if [ -f "$HOME/.cargo/env" ]; then
   . "$HOME/.cargo/env"
 fi
+
+if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then . $HOME/.nix-profile/etc/profile.d/nix.sh; fi

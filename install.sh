@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e # -e: exit on error
 
 if [ ! "$(command -v curl)" ]; then
@@ -6,7 +6,7 @@ if [ ! "$(command -v curl)" ]; then
   exit 1
 fi
 
-sh <(curl -L https://nixos.org/nix/install) --no-daemon
+sh <(curl -L https://nixos.org/nix/install) --no-daemon --no-modify-profile
 
 source /home/vscode/.nix-profile/etc/profile.d/nix.sh
 
