@@ -17,6 +17,6 @@ script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
 
 ln -s "${script_dir}/nix" /home/vscode/.config/home-manager
 
-nix run /home/vscode/.config/home-manager/#homeConfigurations."vscode".activationPackage
+nix run '/home/vscode/.config/home-manager/#homeConfigurations."vscode".activationPackage'
 
 exec chezmoi init --apply "--source=$script_dir"
