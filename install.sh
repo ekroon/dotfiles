@@ -10,6 +10,9 @@ sh <(curl -L https://nixos.org/nix/install) --no-daemon --no-modify-profile
 
 source /home/vscode/.nix-profile/etc/profile.d/nix.sh
 
+mkdir -p $HOME/.config/nix 2>/dev/null
+echo "experimental-features = nix-command flakes" > $HOME/.config/nix/nix.conf
+
 nix shell 'nixpkgs#acl' --command bash -c 'sudo env PATH=$PATH setfacl -k /tmp'
 
 # POSIX way to get script's dir: https://stackoverflow.com/a/29834779/12156188
