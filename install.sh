@@ -27,6 +27,6 @@ echo 'eval "$(devbox global shellenv)"' >> $HOME/.bashrc
 . $HOME/.bashrc
 
 devbox global add acl atuin chezmoi starship tailscale
-eval "$(devbox global shellenv --preserve-path-stack -r)" && hash -r
+eval "$(devbox global shellenv --preserve-path-stack)" && hash -r
 
 exec chezmoi init --apply "--source=$script_dir"
