@@ -24,8 +24,7 @@ curl -fsSL https://get.jetify.com/devbox | bash
 unset FORCE
 
 echo 'eval "$(devbox global shellenv)"' >> $HOME/.bashrc
-source $HOME/.bashrc
-. <(devbox global shellenv --init-hook)
+. $HOME/.bashrc
 
 devbox global add acl atuin chezmoi starship tailscale
 eval "$(devbox global shellenv --preserve-path-stack -r)" && hash -r
