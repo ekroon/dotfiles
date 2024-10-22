@@ -13,7 +13,8 @@
   outputs = { nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      overlay = import ./overlay;
+      pkgs = nixpkgs.legacyPackages.${system}.extend overlay;
     in {
       homeConfigurations."vscode" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
