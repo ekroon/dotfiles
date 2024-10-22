@@ -18,10 +18,13 @@ echo "experimental-features = nix-command flakes fetch-closure" > $HOME/.config/
 # POSIX way to get script's dir: https://stackoverflow.com/a/29834779/12156188
 script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
 
-if [ ! -e /home/vscode/.config/home-manager ]; then
-  ln -s "${script_dir}/nix" /home/vscode/.config/home-manager
-fi
+# install devbox
+export FORCE=1
+curl -fsSL https://get.jetify.com/devbox | bash
+unset FORCE
 
-nix run "${script_dir}/nix#homeConfigurations.\"vscode\".activationPackage"
+devbox global add acl atuin chezmoi starship tailscale
+
+. <(devbox global shellenv --init-hook)
 
 exec chezmoi init --apply "--source=$script_dir"
