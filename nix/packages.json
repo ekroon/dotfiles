@@ -1,24 +1,2 @@
 [
-    { "name": "atuin",
-      "fromStore": "https://cache.nixos.org",
-      "fromPath": "/nix/store/yz3w7xmah3gswg8shqwd560p1jr3srac-atuin-18.3.0"
-    },
-    { "name": "acl.bin",
-      "fromStore": "https://cache.nixos.org",
-      "fromPath": "/nix/store/7qnd39lr1kwpx4vlrxrvsgxvs7cvl82x-acl-2.3.2-bin"
-    },
-    { 
-      "name": "tailscale",
-      "fromStore": "https://cache.nixos.org",
-      "fromPath": "/nix/store/sgyifzfk54pk1vs4djni1j4w147xjmxd-tailscale-1.76.1"
-    },
-    {
-      "name": "chezmoi",
-      "fromStore": "https://cache.nixos.org",
-      "fromPath": "/nix/store/6s21dx2w1pqkzw4065j569p5s00ajs1x-chezmoi-2.52.3"
-    },
-    { "name": "starship", 
-      "fromStore": "https://cache.nixos.org",
-      "fromPath": "/nix/store/cx80ncbrxsrrg5bw6r6zq9xv9sjmkpg6-starship-1.20.1"
-    }
 ]
