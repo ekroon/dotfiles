@@ -13,4 +13,5 @@ script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
 curl https://mise.run | sh
 ~/.local/bin/mise use --global aqua:atuinsh/atuin chezmoi starship aqua:tailscale/tailscale
 
+eval $(~/.local/bin/mise activate bash)
 exec $(~/.local/bin/mise which chezmoi) init --apply "--source=$script_dir"
