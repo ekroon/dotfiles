@@ -1,10 +1,10 @@
 #!/bin/bash
 {{ if .codespaces -}}
 if [ -n "${GH_GH_PAT}" ]; then
-  echo "Set chezmoi remote to use GH_PAT_PAT"
+  echo "Set chezmoi remote to use GH_GH_PAT"
   chezmoi git -- remote set-url --push origin https://username:"${GH_GH_PAT}"@github.com/ekroon/dotfiles
 else
-  echo "Skipping setting chezmoi remote to use GH_PAT_PAT"
+  echo "Skipping setting chezmoi remote to use GH_GH_PAT"
 fi
 {{ end }}
 
