@@ -1,5 +1,9 @@
 return {
   {
+    "nvim-treesitter/nvim-treesitter",
+    opts = { ensure_installed = { "ruby" } },
+  },
+  {
     "neovim/nvim-lspconfig",
     ---@class PluginLspOpts
     opts = {
