@@ -10,6 +10,7 @@ return {
       servers = {
         -- pyright will be automatically installed with mason and loaded with lspconfig
         sorbet = {},
+        rubocop = { mason = false },
       },
       setup = {
         sorbet = function()
@@ -17,6 +18,13 @@ return {
             cmd = { "bin/srb", "tc", "--lsp" },
             filetypes = { "ruby" },
           })
+        end,
+        rubocop = function()
+          require("lspconfig").rubocop.setup({
+            cmd = { "rubocop", "--lsp" },
+            filetypes = { "ruby" },
+          })
+          return true
         end,
       },
     },
