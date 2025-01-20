@@ -4,4 +4,4 @@
 
 local map = vim.keymap.set
 
-map("n", "<leader>bC", ':let @+=expand("%")<CR>', { desc = "Copy filename to clipboard", silent = true })
+map("n", "<leader>bC", '<Cmd>let @+=expand("%")<CR>', { desc = "Copy filename to clipboard", silent = true })
