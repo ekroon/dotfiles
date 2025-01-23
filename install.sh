@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e # -e: exit on error
 
+sudo chsh -s $(which zsh) $(id -un)
+
 if [ ! "$(command -v curl)" ]; then
   echo "Needs curl to install"
   exit 1
