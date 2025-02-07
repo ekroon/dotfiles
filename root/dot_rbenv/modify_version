@@ -1,0 +1,6 @@
+chezmoi:modify-template
+{{- if and .codespaces .dotcom -}}
+vendored
+{{- else -}}
+{{.chezmoi.stdin}}
+{{- end -}}
