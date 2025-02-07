@@ -20,6 +20,11 @@ then
   plugins+=rails
 fi
 
+if command -v rbenv &> /dev/null
+then
+  plugins+=rbenv
+fi
+
 source $ZSH/oh-my-zsh.sh
 
 export SHELL=$(which zsh)
