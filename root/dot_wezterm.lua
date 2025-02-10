@@ -31,5 +31,23 @@ config.bold_brightens_ansi_colors = "BrightAndBold"
 
 config.window_decorations = "RESIZE"
 
+local act = wezterm.action
+config.keys = {
+	-- Make Option-Left equivalent to Alt-b which many line editors interpret as backward-word
+	{ key = "LeftArrow", mods = "OPT", action = act.SendString("\x1bb") },
+	-- Make Option-Right equivalent to Alt-f; forward-word
+	{ key = "RightArrow", mods = "OPT", action = act.SendString("\x1bf") },
+	{
+		key = "9",
+		mods = "ALT",
+		action = wezterm.action.ShowLauncherArgs({ flags = "FUZZY|DOMAINS|WORKSPACES" }),
+	},
+}
+
+wezterm.add_to_config_reload_watch_list("~/.ssh/config")
+wezterm.add_to_config_reload_watch_list("~/.ssh/codespaces")
+
+config.ssh_domains = wezterm.default_ssh_domains()
+
 -- and finally, return the configuration to wezterm
 return config
