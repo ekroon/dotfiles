@@ -19,11 +19,12 @@ return {
   {
     "LazyVim/LazyVim",
     opts = {
-      colorscheme = "catppuccin-latte",
+      colorscheme = "catppuccin-mocha",
     },
   },
   {
     "f-person/auto-dark-mode.nvim",
+    enabled = false,
     opts = {
       fallback = get_darkmode_setting(),
     },
