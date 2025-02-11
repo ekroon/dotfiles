@@ -8,3 +8,7 @@
     type = "git-repo"
     url = "https://github.com/tmux-plugins/tpm"
     refreshPeriod = "168h"
+[".ohmyzsh-custom/plugins/wezterm/wezterm.sh"]
+    type = "file"
+    url = "https://github.com/wezterm/wezterm/raw/refs/heads/main/assets/shell-integration/wezterm.sh"
+    refreshPeriod = "168h"
