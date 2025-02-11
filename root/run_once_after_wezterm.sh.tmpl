@@ -1,0 +1,14 @@
+{{ if eq .chezmoi.os "linux"}}
+{{ if eq .chezmoi.osRelease.id "ubuntu"}}
+
+# Create a temporary file
+temp_dir=$(mktemp -d)
+
+# Download the file to the temporary location
+curl -L -o "$temp_dir/wezterm-nightly.deb" "https://github.com/wezterm/wezterm/releases/download/nightly/wezterm-nightly.Ubuntu{{ .chezmoi.osRelease.versionID }}.deb"
+
+sudo apt update
+sudo apt install -y "$temp_dir/wezterm-nightly.deb"
+
+{{ end}}
+{{ end}}
