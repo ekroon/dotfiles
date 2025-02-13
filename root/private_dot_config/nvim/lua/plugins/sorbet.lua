@@ -9,8 +9,10 @@ return {
     opts = {
       servers = {
         -- pyright will be automatically installed with mason and loaded with lspconfig
-        sorbet = {},
+        solargraph = { mason = false },
+        sorbet = { mason = false },
         rubocop = { mason = false },
+        ruby_lsp = { mason = false, cmd = { vim.fn.expand("ruby-lsp") } },
       },
       setup = {
         sorbet = function()
