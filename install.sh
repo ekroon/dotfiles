@@ -12,7 +12,8 @@ fi
 script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
 
 curl https://mise.run | sh
-~/.local/bin/mise use --global aqua:atuinsh/atuin chezmoi node starship aqua:tailscale/tailscale fzf
+~/.local/bin/mise use --global go:github.com/twpayne/chezmoi/v2@v2.60
+~/.local/bin/mise use --global aqua:atuinsh/atuin node starship aqua:tailscale/tailscale fzf
 
 eval "$(~/.local/bin/mise activate bash)"
 exec $(~/.local/bin/mise which chezmoi) init --apply "--source=$script_dir"
