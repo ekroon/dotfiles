@@ -20,6 +20,7 @@ return {
             cmd = { "bin/srb", "tc", "--lsp" },
             filetypes = { "ruby" },
           })
+          return true
         end,
         rubocop = function()
           require("lspconfig").rubocop.setup({
