@@ -1,0 +1,9 @@
+[tools]
+"aqua:atuinsh/atuin" = "latest"
+fzf = "latest"
+"ubi:twpayne/chezmoi" = { version = "latest", matching = "musl" }
+node = "latest"
+starship = "latest"
+
+[settings]
+idiomatic_version_file_enable_tools = ["node"]
