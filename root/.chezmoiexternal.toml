@@ -12,3 +12,8 @@
     type = "file"
     url = "https://github.com/wezterm/wezterm/raw/refs/heads/main/assets/shell-integration/wezterm.sh"
     refreshPeriod = "168h"
+[".ohmyzsh-custom/plugins/copilot-terminal-detection/copilot-terminal-detection.plugin.zsh"]
+    type = "file"
+    url = "https://raw.githubusercontent.com/ekroon/vscode-copilot-terminal-detection/refs/heads/main/oh-my-zsh-plugin/copilot-terminal-detection.plugin.zsh"
+    refreshPeriod = "168h"
+

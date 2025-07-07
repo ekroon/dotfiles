@@ -10,7 +10,8 @@ then
   plugins+=mise
 fi
 
-plugins+=starship
+plugins+=copilot-terminal-detection
+plugins+=configure-prompt
 
 if command -v rails &> /dev/null
 then
@@ -21,8 +22,6 @@ if command -v rbenv &> /dev/null
 then
   plugins+=rbenv
 fi
-
-plugins+=wezterm
 
 source $ZSH/oh-my-zsh.sh
 
