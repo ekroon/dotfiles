@@ -1,0 +1,16 @@
+Include ~/.orbstack/ssh/config
+
+Host *
+  IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+  # AddKeysToAgent yes
+  # UseKeychain yes
+  # IdentityFile ~/.ssh/id_ed25519
+  SendEnv LC_COLORSCHEME
+
+Host bastion*.githubapp.com vault-bastion*.githubapp.com
+  ForwardAgent yes
+  User ekroon
+Host *.github.com *.github.net *.githubapp.com
+  ForwardAgent no
+  User ekroon
+
