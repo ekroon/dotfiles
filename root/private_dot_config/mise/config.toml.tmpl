@@ -9,7 +9,9 @@ usage = "latest"
 ruby = "latest"
 go = "latest"
 {{- end }}
-
+{{if .codespaces -}}
+"ubi:twpayne/chezmoi[matching=musl]" = "latest"
+{{- end }}
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
