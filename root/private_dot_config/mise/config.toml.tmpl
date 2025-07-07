@@ -1,9 +1,15 @@
 [tools]
 "aqua:atuinsh/atuin" = "latest"
 fzf = "latest"
-"ubi:twpayne/chezmoi" = { version = "latest", matching = "musl" }
 node = "latest"
 starship = "latest"
+usage = "latest"
+{{if not .codespaces -}}
+"ubi:ekroon/create-codespace-and-checkout" = "latest"
+ruby = "latest"
+go = "latest"
+{{- end }}
+
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
