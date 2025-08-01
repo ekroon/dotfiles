@@ -13,7 +13,7 @@ script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
 
 curl https://mise.run | sh
 
-~/.local/bin/mise use --global aqua:atuinsh/atuin node starship fzf "ubi:twpayne/chezmoi[matching=musl]"
+~/.local/bin/mise use --global aqua:atuinsh/atuin starship fzf "ubi:twpayne/chezmoi[matching=musl]"
 
 eval "$(~/.local/bin/mise activate bash)"
 exec $(~/.local/bin/mise which chezmoi) init --apply "--source=$script_dir"
