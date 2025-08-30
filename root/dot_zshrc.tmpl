@@ -1,7 +1,7 @@
 export ZSH=$HOME/.oh-my-zsh
 ZSH_THEME="robbyrussell"
 ZSH_CUSTOM=$HOME/.ohmyzsh-custom
-ZSH_CACHE_DIR="${HOME/.cache}/ohmyzsh"
+export ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ohmyzsh"
 
 plugins=(git)
 
@@ -10,7 +10,7 @@ then
   plugins+=mise
 fi
 
-plugins+=copilot-terminal-detection
+# plugins+=copilot-terminal-detection
 plugins+=configure-prompt
 
 if command -v rails &> /dev/null
@@ -35,3 +35,5 @@ if command -v direnv &> /dev/null
 then
   eval "$(direnv hook zsh)"
 fi
+
+eval "$(mise x ubi:ekroon/try -- try init)"
