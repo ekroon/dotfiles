@@ -1,4 +1,4 @@
-if [[ "$COPILOT_AGENT_DETECTED" == "true" ]]; then
+if [[ "$IS_AGENT" == "1" ]]; then
     unset ZSH_THEME
     PROMPT="🤖 %1~ %# "
 else

@@ -24,13 +24,13 @@ then
   plugins+=rbenv
 fi
 
+if [[ "$IS_AGENT" != "1" ]]; then
+    plugins+=atuin
+fi
+
 source $ZSH/oh-my-zsh.sh
 
 export SHELL=$(which zsh)
-
-export ATUIN_NOBIND="true"
-eval "$(atuin init zsh)"
-bindkey '^r' _atuin_search_widget
 
 if command -v direnv &> /dev/null
 then
