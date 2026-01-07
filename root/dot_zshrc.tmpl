@@ -37,4 +37,16 @@ then
   eval "$(direnv hook zsh)"
 fi
 
+
+{{if not .codespaces -}}
+export TRY_PROJECTS_DIR="~/develop/tries"
+{{- end }}
 eval "$(mise x ubi:ekroon/try -- try init)"
+
+
+{{if not .codespaces -}}
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/Users/erwin/.lmstudio/bin"
+# End of LM Studio CLI section
+{{- end }}
+
