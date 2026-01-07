@@ -41,7 +41,7 @@ fi
 {{if not .codespaces -}}
 export TRY_PROJECTS_DIR="~/develop/tries"
 {{- end }}
-eval "$(mise x ubi:ekroon/try -- try init)"
+eval "$(mise x github:ekroon/try -- try init)"
 
 
 {{if not .codespaces -}}

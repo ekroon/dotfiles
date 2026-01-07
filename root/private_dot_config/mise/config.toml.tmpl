@@ -5,12 +5,15 @@ node = "latest"
 starship = "latest"
 usage = "latest"
 {{if not .codespaces -}}
-"ubi:ekroon/create-codespace-and-checkout" = "latest"
+"github:ekroon/create-codespace-and-checkout" = "latest"
 ruby = "latest"
 go = "latest"
+gum = "latest"
+uv = "latest"
+"npm:@github/copilot" = "latest"
 {{- end }}
 {{if .codespaces -}}
-"ubi:twpayne/chezmoi[matching=musl]" = "latest"
+"github:twpayne/chezmoi[matching=musl]" = "latest"
 {{- end }}
 
 [settings]
