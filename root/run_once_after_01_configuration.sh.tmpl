@@ -1,4 +1,11 @@
 #!/bin/bash
+
+# Install tmux plugins via TPM
+if [ -x "${HOME}/.tmux/plugins/tpm/bin/install_plugins" ]; then
+  echo "Installing tmux plugins..."
+  "${HOME}/.tmux/plugins/tpm/bin/install_plugins"
+fi
+
 {{ if .codespaces -}}
 if [ -n "${GH_GH_PAT}" ]; then
   echo "Set chezmoi remote to use GH_GH_PAT"
