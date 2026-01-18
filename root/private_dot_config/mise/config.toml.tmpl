@@ -4,17 +4,17 @@ fzf = "latest"
 node = "latest"
 starship = "latest"
 usage = "latest"
-{{if not .codespaces -}}
+{{if .codespaces -}}
+"github:twpayne/chezmoi" = { version = "latest", asset_pattern = "*musl*" }
+"github:anomalyco/opencode" = "latest"
+{{- else -}}
+"github:twpayne/chezmoi" = "latest"
 "github:ekroon/create-codespace-and-checkout" = { version = "latest", asset_pattern = "create-codespace-and-checkout" }
 ruby = "latest"
 go = "latest"
 gum = "latest"
 uv = "latest"
 "npm:@github/copilot" = "latest"
-{{- end }}
-{{if .codespaces -}}
-"github:twpayne/chezmoi" = { version = "latest", asset_pattern = "*musl*" }
-"github:anomalyco/opencode" = "latest"
 {{- end }}
 
 [settings]
