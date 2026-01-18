@@ -13,7 +13,12 @@ script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
 
 curl https://mise.run | sh
 
-~/.local/bin/mise use --global aqua:atuinsh/atuin starship fzf "ubi:twpayne/chezmoi[matching=musl]"
+# Use musl build for chezmoi in Codespaces (x86_64), otherwise use default (for ARM64 compatibility)
+if [ "$CODESPACES" = "true" ] && [ "$(uname -m)" = "x86_64" ]; then
+  ~/.local/bin/mise use --global aqua:atuinsh/atuin starship fzf "ubi:twpayne/chezmoi[matching=musl]"
+else
+  ~/.local/bin/mise use --global aqua:atuinsh/atuin starship fzf "ubi:twpayne/chezmoi"
+fi
 
 eval "$(~/.local/bin/mise activate bash)"
 exec $(~/.local/bin/mise which chezmoi) init --apply "--source=$script_dir"
