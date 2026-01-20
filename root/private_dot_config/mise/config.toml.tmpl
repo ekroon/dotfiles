@@ -4,11 +4,16 @@ fzf = "latest"
 node = "latest"
 starship = "latest"
 usage = "latest"
+shellcheck = "latest"
+"github:anomalyco/opencode" = "latest"
+"npm:@devcontainers/cli" = "latest"
 {{if .codespaces -}}
 "github:twpayne/chezmoi" = { version = "latest", asset_pattern = "*musl*" }
-"github:anomalyco/opencode" = "latest"
+gh = "latest"
+tmux = "latest"
 {{- else -}}
 "github:twpayne/chezmoi" = "latest"
+direnv = "latest"
 "github:ekroon/create-codespace-and-checkout" = { version = "latest", asset_pattern = "create-codespace-and-checkout" }
 ruby = "latest"
 go = "latest"
