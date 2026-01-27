@@ -1,4 +1,5 @@
 [tools]
+# === Always installed (all environments) ===
 "aqua:atuinsh/atuin" = "latest"
 fzf = "latest"
 node = "latest"
@@ -7,11 +8,39 @@ usage = "latest"
 shellcheck = "latest"
 "github:anomalyco/opencode" = "latest"
 "npm:@devcontainers/cli" = "latest"
-{{if .codespaces -}}
+
+{{- if .codespaces }}
+# === Codespaces base ===
 "github:twpayne/chezmoi" = { version = "latest", asset_pattern = "*musl*" }
 gh = "latest"
 tmux = "latest"
-{{- else -}}
+
+# === Codespaces default tools (from .chezmoidata.yaml) ===
+{{- range .codespaces_default_tools }}
+{{ . | quote }} = "latest"
+{{- end }}
+
+# === Pattern-matched layers (from .chezmoidata.yaml) ===
+{{- range .codespaces_tool_layers }}
+{{- $pattern := .pattern }}
+{{- $matched := false }}
+{{- if eq $pattern "*" }}
+{{- $matched = true }}
+{{- else if hasSuffix "/*" $pattern }}
+{{- $matched = hasPrefix (trimSuffix "*" $pattern) $.repo }}
+{{- else }}
+{{- $matched = eq $pattern $.repo }}
+{{- end }}
+{{- if $matched }}
+# Layer: {{ $pattern }}
+{{- range .tools }}
+{{ . | quote }} = "latest"
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- else }}
+# === Local machine tools ===
 "github:twpayne/chezmoi" = "latest"
 direnv = "latest"
 "github:ekroon/create-codespace-and-checkout" = { version = "latest", asset_pattern = "create-codespace-and-checkout" }

@@ -1,0 +1,25 @@
+# Codespaces tool layers
+# Patterns are matched against GITHUB_REPOSITORY environment variable
+# All matching layers have their tools installed (layered, not exclusive)
+
+# Default tools installed in all codespaces (in addition to mise/config.toml.tmpl base)
+codespaces_default_tools:
+  - direnv
+  - "github:BurntSushi/ripgrep[matching=musl]"
+  - "github:sharkdp/fd[matching=musl]"
+  - "github:sharkdp/bat[matching=musl]"
+
+# Pattern-based layers
+# Patterns: "org/repo" for exact match, "org/*" for prefix match
+# All matching patterns apply their tools (layered)
+codespaces_tool_layers:
+  - pattern: "github/*"
+    tools:
+      - ripgrep-all
+  - pattern: "github/github"
+    tools:
+      - "npm:@github/copilot"
+  # Example: add tools for your personal org
+  # - pattern: "ekroon/*"
+  #   tools:
+  #     - my-custom-tool
