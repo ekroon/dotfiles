@@ -1,0 +1,81 @@
+#!/bin/bash
+set -euo pipefail
+
+# Set PATH for LaunchAgent execution (includes Homebrew and common locations)
+export PATH="/opt/homebrew/bin:/usr/local/bin:{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+# Configuration
+VAULT_PATH="{{ .chezmoi.homeDir }}/Library/Mobile Documents/iCloud~md~obsidian/Documents/MainVault"
+LOCAL_REPO="$HOME/.vault-backups"
+PASSWORD_FILE="$HOME/.config/restic/password"
+LOG_DIR="$HOME/.local/log"
+
+# Defaults
+REMOTE=false
+TAG="manual"
+COMMAND_ARGS=()
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --remote)
+            REMOTE=true
+            shift
+            ;;
+        --tag)
+            TAG="$2"
+            shift 2
+            ;;
+        --)
+            shift
+            COMMAND_ARGS=("$@")
+            break
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Initialize local repo if needed
+if [[ ! -d "$LOCAL_REPO" ]]; then
+    echo "Initializing local repository at $LOCAL_REPO"
+    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" init
+fi
+
+# Run local backup
+echo "Backing up vault to local repository..."
+restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "$TAG"
+
+# Prune old snapshots (local retention: all within 2h, 24 hourly, 7 daily)
+echo "Pruning old local snapshots..."
+restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" forget --keep-within 2h --keep-hourly 24 --keep-daily 7 --prune
+
+# Remote backup (B2) - placeholder for later
+if [[ "$REMOTE" == true ]]; then
+    B2_ENV="$HOME/.config/restic/b2-env"
+    if [[ -f "$B2_ENV" ]]; then
+        source "$B2_ENV"
+        if [[ -n "${B2_ACCOUNT_ID:-}" && -n "${B2_ACCOUNT_KEY:-}" && -n "${RESTIC_REPOSITORY_REMOTE:-}" ]]; then
+            echo "Backing up to B2..."
+            restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "remote"
+            restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" forget --keep-within 2h --keep-daily 30 --keep-weekly 12 --keep-monthly 12 --prune
+        else
+            echo "Warning: B2 credentials incomplete, skipping remote backup" >&2
+        fi
+    else
+        echo "Warning: B2 credentials file not found at $B2_ENV, skipping remote backup" >&2
+    fi
+fi
+
+echo "Backup complete."
+
+# Run command if provided
+if [[ ${#COMMAND_ARGS[@]} -gt 0 ]]; then
+    echo "Running: ${COMMAND_ARGS[*]}"
+    exec "${COMMAND_ARGS[@]}"
+fi

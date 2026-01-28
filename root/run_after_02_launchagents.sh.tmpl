@@ -1,0 +1,25 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+set -e
+
+echo "Loading Obsidian backup LaunchAgents..."
+
+# Unload existing agents if they're running
+launchctl unload "$HOME/Library/LaunchAgents/com.erwin.vault-backup.plist" 2>/dev/null || echo "Warning: Could not unload com.erwin.vault-backup (may not be loaded yet)"
+launchctl unload "$HOME/Library/LaunchAgents/com.erwin.vault-backup-remote.plist" 2>/dev/null || echo "Warning: Could not unload com.erwin.vault-backup-remote (may not be loaded yet)"
+
+# Load the agents
+if launchctl load "$HOME/Library/LaunchAgents/com.erwin.vault-backup.plist"; then
+  echo "✓ Loaded com.erwin.vault-backup"
+else
+  echo "Warning: Failed to load com.erwin.vault-backup" >&2
+fi
+
+if launchctl load "$HOME/Library/LaunchAgents/com.erwin.vault-backup-remote.plist"; then
+  echo "✓ Loaded com.erwin.vault-backup-remote"
+else
+  echo "Warning: Failed to load com.erwin.vault-backup-remote" >&2
+fi
+
+echo "LaunchAgent setup complete"
+{{ end -}}
