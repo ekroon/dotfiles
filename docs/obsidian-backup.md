@@ -87,7 +87,13 @@ restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file ~/.config/restic/password 
 ## Other commands
 
 ```bash
-# List snapshots
+# List local snapshots
+~/.local/bin/backup-vault.sh --list
+
+# List both local and remote snapshots (if B2 configured)
+~/.local/bin/backup-vault.sh --list --remote
+
+# List snapshots using restic directly
 restic -r ~/.vault-backups --password-file ~/.config/restic/password snapshots
 
 # Restore latest snapshot
