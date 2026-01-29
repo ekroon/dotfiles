@@ -84,7 +84,27 @@ restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file ~/.config/restic/password 
 ~/.local/bin/backup-vault.sh --remote --tag test
 ```
 
-## Other commands
+## Manual backup operations
+
+```bash
+# Manual local backup
+~/.local/bin/backup-vault.sh --tag manual
+
+# Manual remote backup
+~/.local/bin/backup-vault.sh --remote --tag manual
+
+# Run a command after backup completes
+~/.local/bin/backup-vault.sh --tag manual -- copilot
+~/.local/bin/backup-vault.sh --remote -- ~/scripts/notify.sh
+~/.local/bin/backup-vault.sh -- echo "Backup done"
+```
+
+The `--` syntax runs any command after the backup finishes. Useful for:
+- Triggering notifications
+- Running cleanup scripts
+- Chaining other tools
+
+## List and restore
 
 ```bash
 # List local snapshots
