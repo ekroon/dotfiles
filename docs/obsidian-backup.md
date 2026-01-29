@@ -93,11 +93,20 @@ restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file ~/.config/restic/password 
 # Manual remote backup
 ~/.local/bin/backup-vault.sh --remote --tag manual
 
+# Check repository integrity and stats
+~/.local/bin/backup-vault.sh --check
+~/.local/bin/backup-vault.sh --check --remote
+
 # Run a command after backup completes
 ~/.local/bin/backup-vault.sh --tag manual -- copilot
 ~/.local/bin/backup-vault.sh --remote -- ~/scripts/notify.sh
 ~/.local/bin/backup-vault.sh -- echo "Backup done"
 ```
+
+The `--check` flag verifies repository integrity and shows statistics:
+- Checks all snapshots, trees, and blobs for corruption
+- Shows file count and total size of latest snapshot
+- Use `--check --remote` to also verify B2 repository (if configured)
 
 The `--` syntax runs any command after the backup finishes. Useful for:
 - Triggering notifications

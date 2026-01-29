@@ -14,6 +14,7 @@ LOG_DIR="$HOME/.local/log"
 REMOTE=false
 TAG="manual"
 LIST=false
+CHECK=false
 COMMAND_ARGS=()
 
 # Parse arguments
@@ -29,6 +30,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --list)
             LIST=true
+            shift
+            ;;
+        --check)
+            CHECK=true
             shift
             ;;
         --)
@@ -61,6 +66,37 @@ if [[ "$LIST" == true ]]; then
             fi
         else
             echo "Warning: B2 credentials file not found, cannot list remote snapshots" >&2
+        fi
+    fi
+    exit 0
+fi
+
+# Check repository integrity and show stats
+if [[ "$CHECK" == true ]]; then
+    echo "Checking local repository integrity..."
+    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" check
+    
+    echo ""
+    echo "Local repository statistics:"
+    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" stats latest
+    
+    if [[ "$REMOTE" == true ]]; then
+        B2_ENV="$HOME/.config/restic/b2-env"
+        if [[ -f "$B2_ENV" ]]; then
+            source "$B2_ENV"
+            if [[ -n "${B2_ACCOUNT_ID:-}" && -n "${B2_ACCOUNT_KEY:-}" && -n "${RESTIC_REPOSITORY_REMOTE:-}" ]]; then
+                echo ""
+                echo "Checking remote (B2) repository integrity..."
+                restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" check
+                
+                echo ""
+                echo "Remote (B2) repository statistics:"
+                restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" stats latest
+            else
+                echo "Warning: B2 credentials incomplete, cannot check remote repository" >&2
+            fi
+        else
+            echo "Warning: B2 credentials file not found, cannot check remote repository" >&2
         fi
     fi
     exit 0
