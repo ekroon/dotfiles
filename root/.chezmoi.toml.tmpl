@@ -1,5 +1,6 @@
 {{- $codespaces := env "CODESPACES" | not | not -}}
 {{- $repo := env "GITHUB_REPOSITORY" | default "" -}}
+{{- $dotcom := eq $repo "github/github" -}}
 {{- $interactive := stdinIsATTY -}}
 
 sourceDir = {{ .chezmoi.sourceDir | quote }}
@@ -8,8 +9,11 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
     name = "Erwin Kroon"
     codespaces = {{ $codespaces }}
     repo = {{ $repo | quote }}
-    {{- if $interactive }}{{/* Interactive setup, so prompt for an email address */}}
+    dotcom = {{ $dotcom }}
+    {{- if $codespaces }}{{/* Codespaces always uses default email */}}
+    email = "ekroon@github.com"
+    {{- else if $interactive }}{{/* Interactive setup, so prompt for an email address */}}
     email = {{ promptString "email" | quote }}
-    {{- else }}{{/* Non-interactive (Codespaces, devcontainer, etc.), so set a default email */}}
+    {{- else }}{{/* Non-interactive (devcontainer, CI, etc.), so set a default email */}}
     email = "ekroon@github.com"
     {{- end }}
