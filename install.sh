@@ -22,4 +22,4 @@ else
 fi
 
 eval "$(~/.local/bin/mise activate bash)"
-exec $(~/.local/bin/mise which chezmoi) init --apply "--source=$script_dir"
+exec $(~/.local/bin/mise which chezmoi) init --apply --force "--source=$script_dir"
