@@ -2,6 +2,17 @@
 
 Automatic Obsidian vault backup using [restic](https://restic.net/) via macOS LaunchAgents.
 
+## Table of contents
+
+- [Backup schedule](#backup-schedule)
+- [Logs](#logs)
+- [Check status](#check-status)
+- [Local password configuration](#local-password-configuration)
+- [B2 configuration (optional)](#b2-configuration-optional)
+- [iCloud configuration (optional)](#icloud-configuration-optional)
+- [Manual backup operations](#manual-backup-operations)
+- [List and restore](#list-and-restore)
+
 ## Backup schedule
 
 - **Local backups**: Every hour (`~/.vault-backups`)
@@ -52,6 +63,24 @@ launchctl list | grep vault-backup
 ```
 
 Exit code `0` = success, `127` = command not found (PATH issue).
+
+## Local password configuration
+
+Local backups use a restic password file at `~/.config/restic/password`. Create it once and keep permissions locked down.
+
+```bash
+mkdir -p ~/.config/restic
+openssl rand -base64 48 > ~/.config/restic/password
+chmod 600 ~/.config/restic/password
+```
+
+Initialize the local repository (first time only):
+
+```bash
+restic -r ~/.vault-backups --password-file ~/.config/restic/password init
+```
+
+This same password is used for local, B2, and iCloud repositories unless you explicitly add a secondary key (iCloud adds `restic-password` for recovery).
 
 ## B2 configuration (optional)
 
