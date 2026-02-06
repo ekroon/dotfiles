@@ -9,19 +9,36 @@ VAULT_PATH="{{ .chezmoi.homeDir }}/Library/Mobile Documents/iCloud~md~obsidian/D
 LOCAL_REPO="$HOME/.vault-backups"
 PASSWORD_FILE="$HOME/.config/restic/password"
 LOG_DIR="$HOME/.local/log"
+ICLOUD_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian"
+ICLOUD_REPO="$ICLOUD_DIR/restic"
+ICLOUD_PASSWORD_FILE="$ICLOUD_DIR/restic-password"
 
 # Defaults
+LOCAL=false
 REMOTE=false
+ICLOUD=false
 TAG="manual"
 LIST=false
 CHECK=false
 COMMAND_ARGS=()
+SCOPE_SET=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --remote)
             REMOTE=true
+            SCOPE_SET=true
+            shift
+            ;;
+        --local)
+            LOCAL=true
+            SCOPE_SET=true
+            shift
+            ;;
+        --icloud)
+            ICLOUD=true
+            SCOPE_SET=true
             shift
             ;;
         --tag)
@@ -48,10 +65,42 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ "$SCOPE_SET" == false ]]; then
+    LOCAL=true
+fi
+
+verify_icloud_password_key() {
+    if [[ ! -f "$ICLOUD_PASSWORD_FILE" ]]; then
+        echo "Warning: iCloud password file not found at $ICLOUD_PASSWORD_FILE, cannot verify iCloud key" >&2
+        return 1
+    fi
+
+    if restic -r "$ICLOUD_REPO" --password-file "$ICLOUD_PASSWORD_FILE" snapshots >/dev/null 2>&1; then
+        echo "iCloud password key verified."
+        return 0
+    fi
+
+    if restic key add --help 2>/dev/null | grep -q -- '--new-password-file'; then
+        echo "Adding iCloud password key..."
+        restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" key add --new-password-file "$ICLOUD_PASSWORD_FILE"
+        if restic -r "$ICLOUD_REPO" --password-file "$ICLOUD_PASSWORD_FILE" snapshots >/dev/null 2>&1; then
+            echo "iCloud password key verified."
+            return 0
+        fi
+        echo "Warning: Failed to verify iCloud password key after adding" >&2
+        return 1
+    fi
+
+    echo "Warning: restic does not support --new-password-file; skipping iCloud key add" >&2
+    return 1
+}
+
 # List snapshots and exit
 if [[ "$LIST" == true ]]; then
-    echo "Local snapshots:"
-    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" snapshots
+    if [[ "$LOCAL" == true ]]; then
+        echo "Local snapshots:"
+        restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" snapshots
+    fi
     
     if [[ "$REMOTE" == true ]]; then
         B2_ENV="$HOME/.config/restic/b2-env"
@@ -68,17 +117,30 @@ if [[ "$LIST" == true ]]; then
             echo "Warning: B2 credentials file not found, cannot list remote snapshots" >&2
         fi
     fi
+    
+    if [[ "$ICLOUD" == true ]]; then
+        if [[ -d "$ICLOUD_REPO" ]]; then
+            verify_icloud_password_key || true
+            echo ""
+            echo "iCloud snapshots:"
+            restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" snapshots
+        else
+            echo "Warning: iCloud repository not found at $ICLOUD_REPO, cannot list iCloud snapshots" >&2
+        fi
+    fi
     exit 0
 fi
 
 # Check repository integrity and show stats
 if [[ "$CHECK" == true ]]; then
-    echo "Checking local repository integrity..."
-    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" check
-    
-    echo ""
-    echo "Local repository statistics:"
-    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" stats latest
+    if [[ "$LOCAL" == true ]]; then
+        echo "Checking local repository integrity..."
+        restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" check
+        
+        echo ""
+        echo "Local repository statistics:"
+        restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" stats latest
+    fi
     
     if [[ "$REMOTE" == true ]]; then
         B2_ENV="$HOME/.config/restic/b2-env"
@@ -99,25 +161,63 @@ if [[ "$CHECK" == true ]]; then
             echo "Warning: B2 credentials file not found, cannot check remote repository" >&2
         fi
     fi
+
+    if [[ "$ICLOUD" == true ]]; then
+        if [[ -d "$ICLOUD_REPO" ]]; then
+            verify_icloud_password_key || true
+            echo ""
+            echo "Checking iCloud repository integrity..."
+            restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" check
+
+            echo ""
+            echo "iCloud repository statistics:"
+            restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" stats latest
+        else
+            echo "Warning: iCloud repository not found at $ICLOUD_REPO, cannot check iCloud repository" >&2
+        fi
+    fi
     exit 0
 fi
 
 # Ensure log directory exists
 mkdir -p "$LOG_DIR"
 
-# Initialize local repo if needed
-if [[ ! -d "$LOCAL_REPO" ]]; then
-    echo "Initializing local repository at $LOCAL_REPO"
-    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" init
+if [[ "$LOCAL" == true ]]; then
+    # Initialize local repo if needed
+    if [[ ! -d "$LOCAL_REPO" ]]; then
+        echo "Initializing local repository at $LOCAL_REPO"
+        restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" init
+    fi
+
+    # Run local backup
+    echo "Backing up vault to local repository..."
+    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "$TAG"
+
+    # Prune old snapshots (local retention: all within 2h, 24 hourly, 7 daily)
+    echo "Pruning old local snapshots..."
+    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" forget --keep-within 2h --keep-hourly 24 --keep-daily 7 --prune
 fi
 
-# Run local backup
-echo "Backing up vault to local repository..."
-restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "$TAG"
+# iCloud backup
+if [[ "$ICLOUD" == true ]]; then
+    if [[ -d "$ICLOUD_DIR" ]]; then
+        if [[ ! -d "$ICLOUD_REPO" ]]; then
+            echo "Initializing iCloud repository at $ICLOUD_REPO"
+            mkdir -p "$ICLOUD_REPO"
+            restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" init
+        fi
 
-# Prune old snapshots (local retention: all within 2h, 24 hourly, 7 daily)
-echo "Pruning old local snapshots..."
-restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" forget --keep-within 2h --keep-hourly 24 --keep-daily 7 --prune
+        verify_icloud_password_key || true
+
+        echo "Backing up vault to iCloud repository..."
+        restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "$TAG" --tag "icloud"
+
+        echo "Pruning old iCloud snapshots..."
+        restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" forget --keep-within 2h --keep-hourly 24 --keep-daily 7 --prune
+    else
+        echo "Warning: iCloud backup folder not found at $ICLOUD_DIR, skipping iCloud backup" >&2
+    fi
+fi
 
 # Remote backup (B2) - placeholder for later
 if [[ "$REMOTE" == true ]]; then
@@ -126,7 +226,7 @@ if [[ "$REMOTE" == true ]]; then
         source "$B2_ENV"
         if [[ -n "${B2_ACCOUNT_ID:-}" && -n "${B2_ACCOUNT_KEY:-}" && -n "${RESTIC_REPOSITORY_REMOTE:-}" ]]; then
             echo "Backing up to B2..."
-            restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "remote"
+            restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "$TAG" --tag "remote"
             restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" forget --keep-within 2h --keep-daily 30 --keep-weekly 12 --keep-monthly 12 --prune
         else
             echo "Warning: B2 credentials incomplete, skipping remote backup" >&2

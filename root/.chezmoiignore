@@ -2,4 +2,5 @@
 .local/bin/backup-vault.sh
 Library/LaunchAgents/com.erwin.vault-backup.plist
 Library/LaunchAgents/com.erwin.vault-backup-remote.plist
+Library/LaunchAgents/com.erwin.vault-backup-icloud.plist
 {{- end }}

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.erwin.vault-backup-icloud</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ .chezmoi.homeDir }}/.local/bin/backup-vault.sh</string>
+        <string>--icloud</string>
+        <string>--tag</string>
+        <string>scheduled</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>StandardOutPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/log/vault-backup-icloud.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/log/vault-backup-icloud.log</string>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
