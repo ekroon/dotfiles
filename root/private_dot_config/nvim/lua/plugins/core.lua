@@ -17,9 +17,12 @@ end
 
 return {
   {
+    "projekt0n/github-nvim-theme",
+  },
+  {
     "LazyVim/LazyVim",
     opts = {
-      colorscheme = "catppuccin-mocha",
+      colorscheme = "github_dark_colorblind",
     },
   },
   {
