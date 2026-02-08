@@ -69,6 +69,31 @@ if [[ "$SCOPE_SET" == false ]]; then
     LOCAL=true
 fi
 
+notify_error() {
+    local message="$1"
+    echo "Error: $message" >&2
+    # Use environment variable to safely pass message to osascript without shell injection
+    BACKUP_NOTIFY_MSG="$message" nohup osascript -e 'display notification (system attribute "BACKUP_NOTIFY_MSG") with title "Vault Backup" sound name "Basso"' &>/dev/null &
+}
+
+# Run a restic backup and detect permission errors.
+# Returns 0 on success, 1 on permission error (with notification), or the restic exit code.
+run_backup() {
+    local repo="$1"
+    shift
+    local output
+    set +e
+    output=$(restic -r "$repo" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" "$@" 2>&1)
+    local rc=$?
+    set -e
+    echo "$output"
+    if echo "$output" | grep -qi "operation not permitted"; then
+        notify_error "Backup failed: grant Full Disk Access to your terminal/app in System Settings → Privacy & Security"
+        return 1
+    fi
+    return "$rc"
+}
+
 verify_icloud_password_key() {
     if [[ ! -f "$ICLOUD_PASSWORD_FILE" ]]; then
         echo "Warning: iCloud password file not found at $ICLOUD_PASSWORD_FILE, cannot verify iCloud key" >&2
@@ -182,6 +207,26 @@ fi
 # Ensure log directory exists
 mkdir -p "$LOG_DIR"
 
+# Skip backup if one completed within the last 30 seconds (avoids duplicate runs
+# when backup-vault.sh wraps both the manual invocation and the MCP server)
+LOCK_FILE="$LOG_DIR/vault-backup.lock"
+SKIP_BACKUP=false
+if [[ -f "$LOCK_FILE" ]]; then
+    lock_mtime=$(stat -f %m "$LOCK_FILE" 2>/dev/null) || lock_mtime=0
+    lock_mtime=${lock_mtime:-0}
+    if [[ "$lock_mtime" =~ ^[0-9]+$ ]]; then
+    lock_age=$(( $(date +%s) - lock_mtime ))
+    if [[ $lock_age -lt 30 && $lock_age -ge 0 ]]; then
+        echo "Backup already ran ${lock_age}s ago, skipping..."
+        SKIP_BACKUP=true
+    fi
+    fi
+fi
+
+if [[ "$SKIP_BACKUP" == false ]]; then
+
+BACKUP_OK=false
+
 if [[ "$LOCAL" == true ]]; then
     # Initialize local repo if needed
     if [[ ! -d "$LOCAL_REPO" ]]; then
@@ -191,11 +236,14 @@ if [[ "$LOCAL" == true ]]; then
 
     # Run local backup
     echo "Backing up vault to local repository..."
-    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "$TAG"
+    if run_backup "$LOCAL_REPO" --tag "$TAG"; then
+        BACKUP_OK=true
+    fi
 
     # Prune old snapshots (local retention: all within 2h, 24 hourly, 7 daily)
     echo "Pruning old local snapshots..."
-    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" forget --keep-within 2h --keep-hourly 24 --keep-daily 7 --prune
+    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" unlock --remove-all 2>/dev/null || true
+    restic -r "$LOCAL_REPO" --password-file "$PASSWORD_FILE" forget --retry-lock 2m --keep-within 2h --keep-hourly 24 --keep-daily 7 --prune || true
 fi
 
 # iCloud backup
@@ -210,10 +258,13 @@ if [[ "$ICLOUD" == true ]]; then
         verify_icloud_password_key || true
 
         echo "Backing up vault to iCloud repository..."
-        restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "$TAG" --tag "icloud"
+        if run_backup "$ICLOUD_REPO" --tag "$TAG" --tag "icloud"; then
+            BACKUP_OK=true
+        fi
 
         echo "Pruning old iCloud snapshots..."
-        restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" forget --keep-within 2h --keep-hourly 24 --keep-daily 7 --prune
+        restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" unlock --remove-all 2>/dev/null || true
+        restic -r "$ICLOUD_REPO" --password-file "$PASSWORD_FILE" forget --retry-lock 2m --keep-within 2h --keep-hourly 24 --keep-daily 7 --prune || true
     else
         echo "Warning: iCloud backup folder not found at $ICLOUD_DIR, skipping iCloud backup" >&2
     fi
@@ -226,8 +277,11 @@ if [[ "$REMOTE" == true ]]; then
         source "$B2_ENV"
         if [[ -n "${B2_ACCOUNT_ID:-}" && -n "${B2_ACCOUNT_KEY:-}" && -n "${RESTIC_REPOSITORY_REMOTE:-}" ]]; then
             echo "Backing up to B2..."
-            restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" backup "$VAULT_PATH" --tag "$TAG" --tag "remote"
-            restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" forget --keep-within 2h --keep-daily 30 --keep-weekly 12 --keep-monthly 12 --prune
+            if run_backup "$RESTIC_REPOSITORY_REMOTE" --tag "$TAG" --tag "remote"; then
+                BACKUP_OK=true
+            fi
+            restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" unlock --remove-all 2>/dev/null || true
+            restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file "$PASSWORD_FILE" forget --retry-lock 2m --keep-within 2h --keep-daily 30 --keep-weekly 12 --keep-monthly 12 --prune || true
         else
             echo "Warning: B2 credentials incomplete, skipping remote backup" >&2
         fi
@@ -237,6 +291,11 @@ if [[ "$REMOTE" == true ]]; then
 fi
 
 echo "Backup complete."
+if [[ "$BACKUP_OK" == true ]]; then
+    touch "$LOCK_FILE"
+fi
+
+fi # SKIP_BACKUP
 
 # Run command if provided
 if [[ ${#COMMAND_ARGS[@]} -gt 0 ]]; then

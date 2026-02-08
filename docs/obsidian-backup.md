@@ -216,3 +216,38 @@ restic -r "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian/r
 # Restore latest snapshot
 restic -r ~/.vault-backups --password-file ~/.config/restic/password restore latest --target ~/restored-vault
 ```
+
+## Troubleshooting
+
+### "operation not permitted" when running manually
+
+If you see this error when running `backup-vault.sh` from a terminal or from Obsidian:
+
+```
+error: openfile for readdirnames failed: open .../iCloud~md~obsidian/Documents/MainVault: operation not permitted
+```
+
+The Obsidian vault lives in an iCloud container (`~/Library/Mobile Documents/iCloud~md~obsidian/`) which macOS protects via TCC (Transparency, Consent, and Control). The app that spawns the backup process needs **Full Disk Access**.
+
+**Fix:**
+
+1. Open **System Settings → Privacy & Security → Full Disk Access**
+2. Click **+** and add your terminal app (e.g., `Ghostty.app`) and/or `Obsidian.app`
+3. Toggle them **on**
+4. Restart the app
+
+The script will show a macOS notification when this error is detected. Scheduled LaunchAgent backups are not affected (launchd has broad file access).
+
+### Stale lock errors
+
+If prune fails with "repository is already locked", a previous restic process was likely interrupted:
+
+```bash
+# Clear stale locks on local repo
+restic -r ~/.vault-backups --password-file ~/.config/restic/password unlock
+
+# Clear stale locks on iCloud repo
+restic -r "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian/restic" --password-file ~/.config/restic/password unlock
+```
+
+The script automatically clears stale locks before pruning and uses `--retry-lock 2m` to handle transient lock contention.
