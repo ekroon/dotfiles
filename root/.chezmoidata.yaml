@@ -16,8 +16,6 @@ codespaces_tool_layers:
   - pattern: "github/*"
     tools:
       - ripgrep-all
-  - pattern: "github/github"
-    tools:
       - "npm:@github/copilot"
   # Example: add tools for your personal org
   # - pattern: "ekroon/*"
