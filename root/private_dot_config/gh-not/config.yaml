@@ -16,6 +16,14 @@ rules:
       - .unread == false
       - .updated_at | fromdateiso8601 < now - 1209600
     action: done
+  - name: mark unread notifications older than 1 month as done
+    filters:
+      - .updated_at | fromdateiso8601 < now - 2592000
+    action: done
+  - name: mark CI activity as done
+    filters:
+      - .reason == "ci_activity"
+    action: done
   - name: mark PRs merged by yourself as read
     filters:
       - .subject.type == "PullRequest"
