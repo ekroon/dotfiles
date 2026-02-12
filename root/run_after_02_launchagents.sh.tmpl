@@ -28,5 +28,35 @@ else
   echo "Warning: Failed to load com.erwin.vault-backup-icloud" >&2
 fi
 
+# gh-not sync LaunchAgent
+echo ""
+echo "Loading gh-not sync LaunchAgent..."
+launchctl unload "$HOME/Library/LaunchAgents/com.erwin.gh-not-sync.plist" 2>/dev/null || echo "Warning: Could not unload com.erwin.gh-not-sync (may not be loaded yet)"
+
+if command -v gh >/dev/null 2>&1 && gh not --version >/dev/null 2>&1; then
+  if launchctl load "$HOME/Library/LaunchAgents/com.erwin.gh-not-sync.plist"; then
+    echo "✓ Loaded com.erwin.gh-not-sync"
+  else
+    echo "Warning: Failed to load com.erwin.gh-not-sync" >&2
+  fi
+else
+  echo "╔═══════════════════════════════════════════════════════════╗" >&2
+  echo "║  ⚠️  gh-not is NOT installed!                            ║" >&2
+  echo "║  Skipping com.erwin.gh-not-sync LaunchAgent.             ║" >&2
+  echo "║  Install with: gh extension install nobe4/gh-not         ║" >&2
+  echo "╚═══════════════════════════════════════════════════════════╝" >&2
+fi
+
+# Log rotation LaunchAgent
+echo ""
+echo "Loading log rotation LaunchAgent..."
+launchctl unload "$HOME/Library/LaunchAgents/com.erwin.log-rotate.plist" 2>/dev/null || echo "Warning: Could not unload com.erwin.log-rotate (may not be loaded yet)"
+
+if launchctl load "$HOME/Library/LaunchAgents/com.erwin.log-rotate.plist"; then
+  echo "✓ Loaded com.erwin.log-rotate"
+else
+  echo "Warning: Failed to load com.erwin.log-rotate" >&2
+fi
+
 echo "LaunchAgent setup complete"
 {{ end -}}

@@ -1,0 +1,28 @@
+cache:
+  path: /Users/erwin/.local/state/gh-not/cache.json
+  ttl_in_hours: 0.5
+endpoint:
+  all: true
+  max_page: 15
+  max_retry: 10
+  per_page: 100
+rules:
+  - name: mark closed PRs as done
+    filters:
+      - .subject.type == "PullRequest"
+      - .subject.state == "closed"
+    action: done
+  - name: mark read notifications older than 2 weeks as done
+    filters:
+      - .unread == false
+      - .updated_at | fromdateiso8601 < now - 1209600
+    action: done
+  - name: mark PRs merged by yourself as read
+    filters:
+      - .subject.type == "PullRequest"
+      - .merged_by.login == "ekroon"
+      - .subject.state == "closed"
+    action: read
+view:
+  height: 40
+  log_path: /Users/erwin/.local/state/gh-not/debug.log

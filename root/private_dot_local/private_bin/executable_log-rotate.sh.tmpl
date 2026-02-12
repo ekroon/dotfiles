@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Log rotation for ~/.local/log/
+# Rotates logs over 1MB, keeps 5 compressed copies
+# Called by com.erwin.log-rotate LaunchAgent
+
+LOG_DIR="{{ .chezmoi.homeDir }}/.local/log"
+MAX_SIZE=1048576  # 1MB in bytes
+KEEP=5
+
+rotate_log() {
+  local file="$1"
+  [ -f "$file" ] || return
+
+  local size
+  size=$(stat -f%z "$file" 2>/dev/null) || return
+  [ "$size" -gt "$MAX_SIZE" ] || return
+
+  # Shift existing rotated logs
+  local i=$KEEP
+  while [ "$i" -gt 1 ]; do
+    local prev=$((i - 1))
+    [ -f "${file}.${prev}.gz" ] && mv "${file}.${prev}.gz" "${file}.${i}.gz"
+    i=$prev
+  done
+
+  # Copy-truncate: minimise the window where lines could be lost.
+  # 1. Copy the current log to a temp file (atomic snapshot)
+  # 2. Immediately truncate the original (launchd keeps writing to same inode)
+  # 3. Compress the copy at leisure
+  local tmp="${file}.rotating"
+  cp "$file" "$tmp"
+  : > "$file"
+  echo "[log-rotate] Rotated $(basename "$file") at $(date)" >> "$file"
+  gzip -c "$tmp" > "${file}.1.gz"
+  rm -f "$tmp"
+}
+
+for log in "$LOG_DIR"/*.log; do
+  rotate_log "$log"
+done

@@ -1,6 +1,10 @@
 {{- if ne .chezmoi.os "darwin" }}
 .local/bin/backup-vault.sh
+.local/bin/gh-not-sync.sh
+.local/bin/log-rotate.sh
 Library/LaunchAgents/com.erwin.vault-backup.plist
 Library/LaunchAgents/com.erwin.vault-backup-remote.plist
 Library/LaunchAgents/com.erwin.vault-backup-icloud.plist
+Library/LaunchAgents/com.erwin.gh-not-sync.plist
+Library/LaunchAgents/com.erwin.log-rotate.plist
 {{- end }}

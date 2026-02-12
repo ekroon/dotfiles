@@ -23,6 +23,23 @@ else
 fi
 {{ end }}
 
+{{ if not .codespaces -}}
+# Install gh-not extension and terminal-notifier (Darwin only, idempotent)
+if command -v gh >/dev/null 2>&1; then
+  if ! gh extension list 2>/dev/null | grep -q 'nobe4/gh-not'; then
+    echo "Installing gh-not extension..."
+    gh extension install nobe4/gh-not
+  fi
+fi
+
+if command -v brew >/dev/null 2>&1; then
+  if ! command -v terminal-notifier >/dev/null 2>&1; then
+    echo "Installing terminal-notifier..."
+    brew install terminal-notifier
+  fi
+fi
+{{ end -}}
+
 # Check if ${ATUIN_USERNAME}, ${ATUIN_PASSWORD} and ${ATUIN_KEY} are set
 if [ -z "${ATUIN_USERNAME}" ] || [ -z "${ATUIN_PASSWORD}" ] || [ -z "${ATUIN_KEY}" ]; then
   echo "ATUIN_USERNAME, ATUIN_PASSWORD and ATUIN_KEY must be set for atuin initialization"
