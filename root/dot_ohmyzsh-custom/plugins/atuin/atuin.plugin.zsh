@@ -3,5 +3,5 @@ if (( $+commands[atuin] )); then
   eval "$(atuin init zsh)"
   bindkey '^r' _atuin_search_widget
 else
-  echo '[oh-my-zsh] starship not found, please install it from https://atuin.sh/'
+  echo '[oh-my-zsh] atuin not found, please install it from https://atuin.sh/'
 fi
