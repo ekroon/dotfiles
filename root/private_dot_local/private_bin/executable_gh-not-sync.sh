@@ -2,6 +2,20 @@
 set -e
 
 LOG_PREFIX="[gh-not-sync]"
+LOCK_FILE="$HOME/.local/state/gh-not/sync.lock"
+
+# Prevent overlapping syncs
+if [ -f "$LOCK_FILE" ]; then
+  lock_pid=$(cat "$LOCK_FILE" 2>/dev/null)
+  if kill -0 "$lock_pid" 2>/dev/null; then
+    echo "$LOG_PREFIX Skipping: previous sync (PID $lock_pid) still running"
+    exit 0
+  fi
+  rm -f "$LOCK_FILE"
+fi
+
+trap 'rm -f "$LOCK_FILE"' EXIT
+echo $$ > "$LOCK_FILE"
 
 echo "$LOG_PREFIX Starting sync at $(date)"
 
