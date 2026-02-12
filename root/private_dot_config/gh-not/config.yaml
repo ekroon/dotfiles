@@ -7,9 +7,8 @@ endpoint:
   max_retry: 10
   per_page: 100
 rules:
-  - name: mark closed PRs as done
+  - name: mark closed PRs and issues as done
     filters:
-      - .subject.type == "PullRequest"
       - .subject.state == "closed"
     action: done
   - name: mark read notifications older than 2 weeks as done

@@ -10,7 +10,7 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! gh not sync -v 4; then
+if ! gh not sync -v 4 -f apply; then
   echo "$LOG_PREFIX ERROR: sync failed at $(date)" >&2
   if command -v terminal-notifier >/dev/null 2>&1; then
     terminal-notifier \
