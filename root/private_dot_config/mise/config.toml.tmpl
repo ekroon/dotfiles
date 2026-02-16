@@ -1,6 +1,5 @@
 [tools]
 # === Always installed (all environments) ===
-"aqua:atuinsh/atuin" = "latest"
 fzf = "latest"
 node = "latest"
 starship = "latest"
@@ -10,6 +9,7 @@ shellcheck = "latest"
 
 {{- if .codespaces }}
 # === Codespaces base ===
+"github:atuinsh/atuin" = { version = "latest", asset_pattern = "atuin-x86_64-unknown-linux-musl.*" }
 "github:twpayne/chezmoi" = { version = "latest", asset_pattern = "*musl*" }
 gh = "latest"
 tmux = "latest"
@@ -50,6 +50,7 @@ gum = "latest"
 uv = "latest"
 "npm:@github/copilot" = "latest"
 "npm:tabctl" = "latest"
+"aqua:atuinsh/atuin" = "latest"
 "github:atuinsh/atuin" = { version = "latest", asset_pattern = "atuin-server-aarch64-apple-darwin.*" }
 {{- end }}
 
