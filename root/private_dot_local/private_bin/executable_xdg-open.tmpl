@@ -1,0 +1,22 @@
+{{- if .codespaces -}}
+#!/usr/bin/env bash
+# xdg-open shim: opens files in less inside a new tmux window.
+# Falls back to less in the current terminal if tmux is not available.
+
+FILE="$1"
+if [ -z "$FILE" ]; then
+  echo "Usage: xdg-open <file>" >&2
+  exit 1
+fi
+
+# Resolve to absolute path
+FILE="$(realpath "$FILE" 2>/dev/null || echo "$FILE")"
+
+OPENER="${EDITOR:-less}"
+
+if command -v tmux >/dev/null 2>&1 && tmux list-sessions >/dev/null 2>&1; then
+  tmux new-window -n "$(basename "$FILE")" "$OPENER '$FILE'"
+else
+  $OPENER "$FILE"
+fi
+{{ end -}}
