@@ -43,6 +43,10 @@ export TRY_PROJECTS_DIR="~/develop/tries"
 {{- end }}
 eval "$(mise x github:ekroon/try@latest -- try init)"
 
+{{if not .codespaces -}}
+eval "$(zoxide init zsh)"
+{{- end }}
+
 
 {{if not .codespaces -}}
 # Added by LM Studio CLI (lms)
