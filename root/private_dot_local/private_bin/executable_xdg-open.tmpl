@@ -1,22 +1,71 @@
-{{- if .codespaces -}}
 #!/usr/bin/env bash
-# xdg-open shim: opens files in less inside a new tmux window.
-# Falls back to less in the current terminal if tmux is not available.
+set -e
 
-FILE="$1"
-if [ -z "$FILE" ]; then
+resolve_opener() {
+  if command -v nvim >/dev/null 2>&1; then
+    printf '%s\n' "nvim"
+    return
+  fi
+
+  if command -v vim >/dev/null 2>&1; then
+    printf '%s\n' "vim"
+    return
+  fi
+
+  echo "xdg-open requires nvim or vim" >&2
+  exit 1
+}
+
+build_open_command() {
+  local opener="$1"
+  shift
+  local arg
+  local command
+
+  command="$(printf '%q' "$opener")"
+  for arg in "$@"; do
+    command="$command $(printf '%q' "$arg")"
+  done
+
+  printf '%s\n' "$command"
+}
+
+run_in_tmux_window() {
+  local window_name="$1"
+  local open_command="$2"
+  local pane_id
+
+  pane_id="$(tmux new-window -P -F '#{pane_id}' -n "$window_name" "$(printf 'bash -lc %q' "$open_command")")"
+
+  while tmux list-panes -a -F '#{pane_id}' | grep -Fx "$pane_id" >/dev/null 2>&1; do
+    sleep 0.2
+  done
+}
+
+if [ "$#" -eq 0 ]; then
   echo "Usage: xdg-open <file>" >&2
   exit 1
 fi
 
-# Resolve to absolute path
-FILE="$(realpath "$FILE" 2>/dev/null || echo "$FILE")"
+OPENER="$(resolve_opener)"
 
-OPENER="${EDITOR:-less}"
-
-if command -v tmux >/dev/null 2>&1 && tmux list-sessions >/dev/null 2>&1; then
-  tmux new-window -n "$(basename "$FILE")" "$OPENER '$FILE'"
-else
-  $OPENER "$FILE"
+if [ "$#" -eq 1 ]; then
+  set -- "$(realpath "$1" 2>/dev/null || printf '%s\n' "$1")"
 fi
-{{ end -}}
+
+WINDOW_TARGET=""
+for arg in "$@"; do
+  WINDOW_TARGET="$arg"
+done
+
+OPEN_COMMAND="$(build_open_command "$OPENER" "$@")"
+WINDOW_NAME="$(basename "$WINDOW_TARGET")"
+
+if command -v tmux >/dev/null 2>&1; then
+  if [ -n "${TMUX:-}" ]; then
+    run_in_tmux_window "$WINDOW_NAME" "$OPEN_COMMAND"
+    exit 0
+  fi
+fi
+
+bash -lc "$OPEN_COMMAND"

@@ -11,6 +11,9 @@ add_to_path "$HOME/.local/bin"
 add_to_path "$HOME/.local/share/mise/shims"
 add_to_path "$HOME/.msrustup/bin"
 
+export EDITOR="xdg-open"
+export VISUAL="$EDITOR"
+
 if [ -f "$HOME/.cargo/env" ]; then
   . "$HOME/.cargo/env"
 fi
