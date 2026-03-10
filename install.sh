@@ -1,10 +1,16 @@
 #!/bin/bash
 set -e # -e: exit on error
 
-sudo chsh -s $(which zsh) $(id -un)
+sudo chsh -s "$(command -v zsh)" "$(id -un)"
 
 if [ ! "$(command -v curl)" ]; then
   echo "Needs curl to install"
+  exit 1
+fi
+
+if [ "$(uname -s)" = "Darwin" ] && [ ! -x /opt/homebrew/bin/brew ] && [ ! -x /usr/local/bin/brew ] && ! command -v brew >/dev/null 2>&1; then
+  echo "Homebrew is required on macOS before running install.sh"
+  echo "Install Homebrew from https://brew.sh and rerun."
   exit 1
 fi
 

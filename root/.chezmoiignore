@@ -1,4 +1,5 @@
 {{- if ne .chezmoi.os "darwin" }}
+.config/homebrew/Brewfile
 .local/bin/backup-vault.sh
 .local/bin/gh-not-sync.sh
 .local/bin/log-rotate.sh

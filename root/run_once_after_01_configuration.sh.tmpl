@@ -24,18 +24,11 @@ fi
 {{ end }}
 
 {{ if not .codespaces -}}
-# Install gh-not extension and terminal-notifier (Darwin only, idempotent)
+# Install gh-not extension (Darwin only, idempotent)
 if command -v gh >/dev/null 2>&1; then
   if ! gh extension list 2>/dev/null | grep -q 'nobe4/gh-not'; then
     echo "Installing gh-not extension..."
     gh extension install nobe4/gh-not
-  fi
-fi
-
-if command -v brew >/dev/null 2>&1; then
-  if ! command -v terminal-notifier >/dev/null 2>&1; then
-    echo "Installing terminal-notifier..."
-    brew install terminal-notifier
   fi
 fi
 {{ end -}}

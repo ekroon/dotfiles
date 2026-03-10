@@ -1,0 +1,29 @@
+# Managed by chezmoi. Edit `root/.chezmoidata.yaml` instead.
+# `brew "mas"` is added automatically when `homebrew_bundle.mas_apps` is non-empty.
+{{- if .homebrew_bundle.taps }}
+
+{{- range .homebrew_bundle.taps }}
+tap {{ . | quote }}
+{{- end }}
+{{- end }}
+{{- if or .homebrew_bundle.formulae .homebrew_bundle.mas_apps }}
+
+{{- if .homebrew_bundle.mas_apps }}
+brew "mas"
+{{- end }}
+{{- range .homebrew_bundle.formulae }}
+brew {{ . | quote }}
+{{- end }}
+{{- end }}
+{{- if .homebrew_bundle.casks }}
+
+{{- range .homebrew_bundle.casks }}
+cask {{ . | quote }}
+{{- end }}
+{{- end }}
+{{- if .homebrew_bundle.mas_apps }}
+
+{{- range .homebrew_bundle.mas_apps }}
+mas {{ .name | quote }}, id: {{ .id }}
+{{- end }}
+{{- end }}

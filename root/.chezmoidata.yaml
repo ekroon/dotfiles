@@ -1,3 +1,11 @@
+# Managed Homebrew bundle for local macOS applies
+homebrew_bundle:
+  taps: []
+  formulae:
+    - terminal-notifier
+  casks: []
+  mas_apps: []
+
 # Codespaces tool layers
 # Patterns are matched against GITHUB_REPOSITORY environment variable
 # All matching layers have their tools installed (layered, not exclusive)

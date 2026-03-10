@@ -1,0 +1,32 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+set -e
+
+BREWFILE="${HOME}/.config/homebrew/Brewfile"
+
+if [ ! -f "${BREWFILE}" ]; then
+  echo "Expected Homebrew Brewfile at ${BREWFILE}" >&2
+  exit 1
+fi
+
+if [ -x /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+elif command -v brew >/dev/null 2>&1; then
+  eval "$(brew shellenv)"
+else
+  echo "Homebrew is required on macOS before running chezmoi apply." >&2
+  echo "Install Homebrew from https://brew.sh and rerun chezmoi apply." >&2
+  exit 1
+fi
+
+echo "Checking Homebrew bundle..."
+
+if brew bundle check --file "${BREWFILE}" --no-upgrade >/dev/null 2>&1; then
+  echo "Homebrew bundle already satisfied"
+else
+  echo "Installing Homebrew bundle..."
+  brew bundle install --file "${BREWFILE}" --no-upgrade
+fi
+{{ end -}}

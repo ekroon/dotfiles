@@ -23,6 +23,7 @@ There is no project-wide build or test suite; validation is per-tool and via che
 - Apply all changes: `chezmoi apply`.
 - Show pending changes: `chezmoi diff`.
 - Update repo + apply: `chezmoi update` (used by `script/codespaces-post-start`).
+- Render the managed Homebrew bundle: `chezmoi cat ~/.config/homebrew/Brewfile`.
 - Render a single file: `chezmoi cat ~/.config/mise/config.toml`.
 - View template data: `chezmoi data` (useful when editing templates).
 
@@ -30,6 +31,7 @@ There is no project-wide build or test suite; validation is per-tool and via che
 ```bash
 GITHUB_REPOSITORY=github/github chezmoi cat ~/.config/mise/config.toml
 GITHUB_REPOSITORY=ekroon/my-repo chezmoi cat ~/.config/mise/config.toml
+chezmoi cat ~/.config/homebrew/Brewfile
 ```
 
 ### Lint / format
@@ -52,6 +54,12 @@ stylua --config-path root/private_dot_config/nvim/stylua.toml root/private_dot_c
 - Edit `root/.chezmoidata.yaml` (patterns + tool lists).
 - Run `chezmoi apply` to regenerate `~/.config/mise/config.toml`.
 - Validate with the single-file checks above.
+
+### Update Homebrew bundle
+- Edit `root/.chezmoidata.yaml` (`homebrew_bundle.taps`, `formulae`, `casks`, `mas_apps`).
+- Run `chezmoi cat ~/.config/homebrew/Brewfile` to preview the managed Brewfile.
+- Run `chezmoi apply` to enforce the bundle on macOS via `brew bundle`.
+- Validate with `brew bundle check --file "$HOME/.config/homebrew/Brewfile" --no-upgrade`.
 
 ### Neovim configuration changes
 - Keep `init.lua` minimal; logic lives in `lua/config` and `lua/plugins`.
@@ -118,11 +126,14 @@ stylua --config-path root/private_dot_config/nvim/stylua.toml root/private_dot_c
 - `shellcheck` is installed via mise (`root/private_dot_config/mise/config.toml.tmpl`).
 - `stylua` is configured via `root/private_dot_config/nvim/stylua.toml`.
 - After editing tool lists, run `chezmoi apply` and then `mise install` if applicable.
+- `brew bundle` enforces packages declared in `root/private_dot_config/homebrew/Brewfile.tmpl` on macOS applies.
 - Use `docs/vscode-configuration.md` for Copilot terminal env notes (`IS_AGENT=1`).
 
 ## Key files and intent
 - `install.sh`: bootstrap + chezmoi init/apply.
 - `script/codespaces-post-start`: runs `chezmoi update`.
+- `root/private_dot_config/homebrew/Brewfile.tmpl`: managed Homebrew bundle for local macOS machines.
+- `root/run_after_00_homebrew_bundle.sh.tmpl`: enforces the Homebrew bundle on each macOS `chezmoi apply`.
 - `root/run_once_after_00_mise_install.sh.tmpl`: `mise install` hook.
 - `root/run_once_after_01_configuration.sh.tmpl`: tmux plugins, codespaces tooling, atuin login.
 - `root/private_dot_config/nvim/init.lua`: entrypoint to LazyVim config.
