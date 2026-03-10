@@ -2,6 +2,7 @@
 homebrew_bundle:
   taps: []
   formulae:
+    - ghq
     - terminal-notifier
   casks: []
   mas_apps: []

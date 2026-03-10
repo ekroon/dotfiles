@@ -14,6 +14,10 @@ add_to_path "$HOME/.msrustup/bin"
 export EDITOR="xdg-open"
 export VISUAL="$EDITOR"
 
+{{ if not .codespaces -}}
+export GHQ_ROOT="$HOME/develop"
+{{ end -}}
+
 if [ -f "$HOME/.cargo/env" ]; then
   . "$HOME/.cargo/env"
 fi
