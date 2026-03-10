@@ -1,4 +1,4 @@
-# Managed Homebrew bundle for local macOS applies
+# Managed Homebrew bundle for local macOS applies only (not Linux or Codespaces)
 homebrew_bundle:
   taps: []
   formulae:

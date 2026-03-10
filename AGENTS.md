@@ -57,8 +57,9 @@ stylua --config-path root/private_dot_config/nvim/stylua.toml root/private_dot_c
 
 ### Update Homebrew bundle
 - Edit `root/.chezmoidata.yaml` (`homebrew_bundle.taps`, `formulae`, `casks`, `mas_apps`).
+- These steps are for local Darwin machines only; Codespaces and other non-Darwin environments do not use Homebrew.
 - Run `chezmoi cat ~/.config/homebrew/Brewfile` to preview the managed Brewfile.
-- Run `chezmoi apply` to enforce the bundle on macOS via `brew bundle`.
+- Run `chezmoi apply` to enforce the bundle on local macOS via `brew bundle`.
 - Validate with `brew bundle check --file "$HOME/.config/homebrew/Brewfile" --no-upgrade`.
 
 ### Neovim configuration changes
@@ -126,7 +127,7 @@ stylua --config-path root/private_dot_config/nvim/stylua.toml root/private_dot_c
 - `shellcheck` is installed via mise (`root/private_dot_config/mise/config.toml.tmpl`).
 - `stylua` is configured via `root/private_dot_config/nvim/stylua.toml`.
 - After editing tool lists, run `chezmoi apply` and then `mise install` if applicable.
-- `brew bundle` enforces packages declared in `root/private_dot_config/homebrew/Brewfile.tmpl` on macOS applies.
+- `brew bundle` enforces packages declared in `root/private_dot_config/homebrew/Brewfile.tmpl` only on local Darwin applies; Linux and Codespaces do not require Homebrew.
 - Use `docs/vscode-configuration.md` for Copilot terminal env notes (`IS_AGENT=1`).
 
 ## Key files and intent
