@@ -11,7 +11,7 @@ add_to_path "$HOME/.local/bin"
 add_to_path "$HOME/.local/share/mise/shims"
 add_to_path "$HOME/.msrustup/bin"
 
-export EDITOR="xdg-open"
+export EDITOR="$HOME/.local/bin/xdg-open"
 export VISUAL="$EDITOR"
 
 {{ if not .codespaces -}}
