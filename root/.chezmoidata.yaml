@@ -7,11 +7,71 @@ homebrew_bundle:
   casks: []
   mas_apps: []
 
+# mise tool configuration
+mise_tool_aliases:
+  - name: atuin
+    value: "github:atuinsh/atuin"
+  - name: atuin-server
+    value: "github:atuinsh/atuin"
+    local_darwin_only: true
+
+mise_tools_always:
+  - fzf
+  - node
+  - starship
+  - usage
+  - shellcheck
+  - "github:anomalyco/opencode"
+
+mise_tools_platform:
+  - name: atuin
+    version: latest
+    os: darwin
+    asset_pattern: "atuin-aarch64-apple-darwin.tar.gz"
+    bin_path: "atuin-aarch64-apple-darwin"
+  - name: atuin
+    version: latest
+    os: linux
+    asset_pattern: "atuin-x86_64-unknown-linux-musl.tar.gz"
+    bin_path: "atuin-x86_64-unknown-linux-musl"
+  - name: atuin-server
+    version: latest
+    os: darwin
+    local_only: true
+    asset_pattern: "atuin-server-aarch64-apple-darwin.tar.gz"
+    bin_path: "atuin-server-aarch64-apple-darwin"
+
+mise_tools_codespaces_base:
+  - name: "github:twpayne/chezmoi"
+    version: latest
+    asset_pattern: "*musl*"
+  - gh
+  - tmux
+
+mise_tools_local:
+  - "github:twpayne/chezmoi"
+  - direnv
+  - name: "github:ekroon/create-codespace-and-checkout"
+    version: latest
+    asset_pattern: "create-codespace-and-checkout"
+  - "npm:@devcontainers/cli"
+  - ruby
+  - go
+  - gum
+  - uv
+  - "npm:@github/copilot"
+  - "github:ekroon/copilot-token-cost"
+  - name: "github:ekroon/tabctl"
+    version: "v0.6.0-rc.3"
+  - zoxide
+  - bun
+  - "npm:wgc"
+
 # Codespaces tool layers
 # Patterns are matched against GITHUB_REPOSITORY environment variable
 # All matching layers have their tools installed (layered, not exclusive)
 
-# Default tools installed in all codespaces (in addition to mise/config.toml.tmpl base)
+# Default tools installed in all codespaces (in addition to mise_tools_codespaces_base)
 codespaces_default_tools:
   - direnv
   - "github:BurntSushi/ripgrep[matching=musl]"

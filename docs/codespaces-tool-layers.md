@@ -6,7 +6,8 @@ and still add specific tools for exact repos such as `github/github`.
 
 ## Configuration
 
-Tool layers are defined in `.chezmoidata.yaml` at the repository root:
+Tool layers and shared mise tool groups are defined in `.chezmoidata.yaml` at the
+repository root:
 
 ```yaml
 # Default tools installed in all codespaces

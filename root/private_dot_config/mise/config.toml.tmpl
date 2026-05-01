@@ -1,23 +1,54 @@
+{{- define "mise_plain_tools" -}}
+{{- range . }}
+{{- if kindIs "string" . }}
+{{ . | quote }} = "latest"
+{{- else if not (or (get . "asset_pattern") (get . "bin_path")) }}
+{{ get . "name" | quote }} = {{ default "latest" (get . "version") | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+{{- define "mise_structured_tools" -}}
+{{- $codespaces := index . "codespaces" -}}
+{{- $os := index . "os" -}}
+{{- range index . "tools" }}
+{{- if not (kindIs "string" .) }}
+{{- $asset_pattern := get . "asset_pattern" -}}
+{{- $bin_path := get . "bin_path" -}}
+{{- $tool_os := get . "os" -}}
+{{- $local_only := get . "local_only" -}}
+{{- if and (or $asset_pattern $bin_path) (or (not $tool_os) (eq $tool_os $os)) (or (not $local_only) (not $codespaces)) }}
+
+[tools.{{ get . "name" | quote }}]
+version = {{ default "latest" (get . "version") | quote }}
+{{- if $asset_pattern }}
+asset_pattern = {{ $asset_pattern | quote }}
+{{- end }}
+{{- if $bin_path }}
+bin_path = {{ $bin_path | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+[tool_alias]
+{{- range .mise_tool_aliases }}
+{{- $local_darwin_only := get . "local_darwin_only" }}
+{{- if or (not $local_darwin_only) (and (not $.codespaces) (eq $.chezmoi.os "darwin")) }}
+{{ get . "name" }} = {{ get . "value" | quote }}
+{{- end }}
+{{- end }}
+
 [tools]
 # === Always installed (all environments) ===
-fzf = "latest"
-node = "latest"
-starship = "latest"
-usage = "latest"
-shellcheck = "latest"
-"github:anomalyco/opencode" = "latest"
+{{ template "mise_plain_tools" .mise_tools_always }}
+{{ template "mise_plain_tools" .mise_tools_platform }}
 
 {{- if .codespaces }}
 # === Codespaces base ===
-"github:atuinsh/atuin" = { version = "latest", asset_pattern = "atuin-x86_64-unknown-linux-musl.*" }
-"github:twpayne/chezmoi" = { version = "latest", asset_pattern = "*musl*" }
-gh = "latest"
-tmux = "latest"
+{{ template "mise_plain_tools" .mise_tools_codespaces_base }}
 
 # === Codespaces default tools (from .chezmoidata.yaml) ===
-{{- range .codespaces_default_tools }}
-{{ . | quote }} = "latest"
-{{- end }}
+{{ template "mise_plain_tools" .codespaces_default_tools }}
 
 # === Pattern-matched layers (from .chezmoidata.yaml) ===
 {{- range .codespaces_tool_layers }}
@@ -32,30 +63,36 @@ tmux = "latest"
 {{- end }}
 {{- if $matched }}
 # Layer: {{ $pattern }}
-{{- range .tools }}
-{{ . | quote }} = "latest"
-{{- end }}
+{{ template "mise_plain_tools" .tools }}
 {{- end }}
 {{- end }}
 
 {{- else }}
 # === Local machine tools ===
-"github:twpayne/chezmoi" = "latest"
-direnv = "latest"
-"github:ekroon/create-codespace-and-checkout" = { version = "latest", asset_pattern = "create-codespace-and-checkout" }
-"npm:@devcontainers/cli" = "latest"
-ruby = "latest"
-go = "latest"
-gum = "latest"
-uv = "latest"
-"npm:@github/copilot" = "latest"
-"aqua:atuinsh/atuin" = "latest"
-"github:atuinsh/atuin" = { version = "latest", asset_pattern = "atuin-server-aarch64-apple-darwin.*" }
-"github:ekroon/copilot-token-cost" = "latest"
-"github:ekroon/tabctl" = "v0.6.0-rc.3"
-zoxide = "latest"
-bun = "latest"
+{{ template "mise_plain_tools" .mise_tools_local }}
 {{- end }}
 
+{{ template "mise_structured_tools" dict "tools" .mise_tools_always "codespaces" .codespaces "os" .chezmoi.os }}
+{{ template "mise_structured_tools" dict "tools" .mise_tools_platform "codespaces" .codespaces "os" .chezmoi.os }}
+{{- if .codespaces }}
+{{ template "mise_structured_tools" dict "tools" .mise_tools_codespaces_base "codespaces" .codespaces "os" .chezmoi.os }}
+{{ template "mise_structured_tools" dict "tools" .codespaces_default_tools "codespaces" .codespaces "os" .chezmoi.os }}
+{{- range .codespaces_tool_layers }}
+{{- $pattern := .pattern }}
+{{- $matched := false }}
+{{- if eq $pattern "*" }}
+{{- $matched = true }}
+{{- else if hasSuffix "/*" $pattern }}
+{{- $matched = hasPrefix (trimSuffix "*" $pattern) $.repo }}
+{{- else }}
+{{- $matched = eq $pattern $.repo }}
+{{- end }}
+{{- if $matched }}
+{{ template "mise_structured_tools" dict "tools" .tools "codespaces" $.codespaces "os" $.chezmoi.os }}
+{{- end }}
+{{- end }}
+{{- else }}
+{{ template "mise_structured_tools" dict "tools" .mise_tools_local "codespaces" .codespaces "os" .chezmoi.os }}
+{{- end }}
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
