@@ -8,85 +8,122 @@ homebrew_bundle:
   mas_apps: []
 
 # mise tool configuration
-mise_tool_aliases:
-  - name: atuin
-    value: "github:atuinsh/atuin"
-  - name: atuin-server
-    value: "github:atuinsh/atuin"
-    local_darwin_only: true
-
-mise_tools_always:
+# Tool filters are OR'd within each filter key and AND'd across keys.
+# Missing filters match every environment.
+mise_tools:
   - fzf
   - node
   - starship
   - usage
   - shellcheck
   - "github:anomalyco/opencode"
-
-mise_tools_platform:
   - name: atuin
+    alias: "github:atuinsh/atuin"
     version: latest
-    os: darwin
     asset_pattern: "atuin-aarch64-apple-darwin.tar.gz"
     bin_path: "atuin-aarch64-apple-darwin"
+    filters:
+      os: [darwin]
+      environment: [local]
   - name: atuin
+    alias: "github:atuinsh/atuin"
     version: latest
-    os: linux
     asset_pattern: "atuin-x86_64-unknown-linux-musl.tar.gz"
     bin_path: "atuin-x86_64-unknown-linux-musl"
+    filters:
+      os: [linux]
+      environment: [codespace, devcontainer]
   - name: atuin-server
+    alias: "github:atuinsh/atuin"
     version: latest
-    os: darwin
-    local_only: true
     asset_pattern: "atuin-server-aarch64-apple-darwin.tar.gz"
     bin_path: "atuin-server-aarch64-apple-darwin"
-
-mise_tools_codespaces_base:
+    filters:
+      os: [darwin]
+      environment: [local]
   - name: "github:twpayne/chezmoi"
     version: latest
     asset_pattern: "*musl*"
-  - gh
-  - tmux
-
-mise_tools_local:
-  - "github:twpayne/chezmoi"
-  - direnv
+    filters:
+      environment: [codespace, devcontainer]
+  - name: gh
+    filters:
+      environment: [codespace, devcontainer]
+  - name: tmux
+    filters:
+      environment: [codespace, devcontainer]
+  - name: "github:twpayne/chezmoi"
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: direnv
+    filters:
+      environment: [codespace, devcontainer]
+  - name: "github:BurntSushi/ripgrep[matching=musl]"
+    filters:
+      environment: [codespace, devcontainer]
+  - name: "github:sharkdp/fd[matching=musl]"
+    filters:
+      environment: [codespace, devcontainer]
+  - name: "github:sharkdp/bat[matching=musl]"
+    filters:
+      environment: [codespace, devcontainer]
   - name: "github:ekroon/create-codespace-and-checkout"
     version: latest
     asset_pattern: "create-codespace-and-checkout"
-  - "npm:@devcontainers/cli"
-  - ruby
-  - go
-  - gum
-  - uv
-  - "npm:@github/copilot"
-  - "github:ekroon/copilot-token-cost"
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: "npm:@devcontainers/cli"
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: ruby
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: go
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: gum
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: uv
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: "npm:@github/copilot"
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: "github:ekroon/copilot-token-cost"
+    filters:
+      os: [darwin]
+      environment: [local]
   - name: "github:ekroon/tabctl"
     version: "v0.6.0-rc.3"
-  - zoxide
-  - bun
-  - "npm:wgc"
-
-# Codespaces tool layers
-# Patterns are matched against GITHUB_REPOSITORY environment variable
-# All matching layers have their tools installed (layered, not exclusive)
-
-# Default tools installed in all codespaces (in addition to mise_tools_codespaces_base)
-codespaces_default_tools:
-  - direnv
-  - "github:BurntSushi/ripgrep[matching=musl]"
-  - "github:sharkdp/fd[matching=musl]"
-  - "github:sharkdp/bat[matching=musl]"
-
-# Pattern-based layers
-# Patterns: "org/repo" for exact match, "org/*" for prefix match
-# All matching patterns apply their tools (layered)
-codespaces_tool_layers:
-  - pattern: "github/*"
-    tools:
-      - ripgrep-all
-      - "npm:@github/copilot"
-  # Example: add tools for your personal org
-  # - pattern: "ekroon/*"
-  #   tools:
-  #     - my-custom-tool
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: zoxide
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: bun
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: "npm:wgc"
+    filters:
+      os: [darwin]
+      environment: [local]
+  - name: ripgrep-all
+    filters:
+      environment: [codespace]
+      repo: ["github/*"]
+  - name: "npm:@github/copilot"
+    filters:
+      environment: [codespace]
+      repo: ["github/*"]

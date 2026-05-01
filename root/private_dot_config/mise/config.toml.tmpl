@@ -1,22 +1,125 @@
 {{- define "mise_plain_tools" -}}
-{{- range . }}
+{{- $environment := index . "environment" -}}
+{{- $os := index . "os" -}}
+{{- $repo := index . "repo" -}}
+{{- range index . "tools" }}
 {{- if kindIs "string" . }}
 {{ . | quote }} = "latest"
-{{- else if not (or (get . "asset_pattern") (get . "bin_path")) }}
+{{- else }}
+{{- $matches := true -}}
+{{- $filters := get . "filters" -}}
+{{- if $filters }}
+{{- $tool_os := get $filters "os" -}}
+{{- if and $tool_os (not (has $os $tool_os)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_environments := get $filters "environment" -}}
+{{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_repos := get $filters "repo" -}}
+{{- if $tool_repos }}
+{{- $repo_matched := false -}}
+{{- range $tool_repos }}
+{{- $pattern := . -}}
+{{- if eq $pattern "*" -}}
+{{- $repo_matched = true -}}
+{{- else if hasSuffix "/*" $pattern -}}
+{{- $repo_matched = or $repo_matched (hasPrefix (trimSuffix "*" $pattern) $repo) -}}
+{{- else -}}
+{{- $repo_matched = or $repo_matched (eq $pattern $repo) -}}
+{{- end -}}
+{{- end }}
+{{- if not $repo_matched }}
+{{- $matches = false -}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if and $matches (not (or (get . "asset_pattern") (get . "bin_path"))) }}
 {{ get . "name" | quote }} = {{ default "latest" (get . "version") | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+{{- define "mise_aliases" -}}
+{{- $environment := index . "environment" -}}
+{{- $os := index . "os" -}}
+{{- $repo := index . "repo" -}}
+{{- range index . "tools" }}
+{{- if not (kindIs "string" .) }}
+{{- $matches := true -}}
+{{- $filters := get . "filters" -}}
+{{- if $filters }}
+{{- $tool_os := get $filters "os" -}}
+{{- if and $tool_os (not (has $os $tool_os)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_environments := get $filters "environment" -}}
+{{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_repos := get $filters "repo" -}}
+{{- if $tool_repos }}
+{{- $repo_matched := false -}}
+{{- range $tool_repos }}
+{{- $pattern := . -}}
+{{- if eq $pattern "*" -}}
+{{- $repo_matched = true -}}
+{{- else if hasSuffix "/*" $pattern -}}
+{{- $repo_matched = or $repo_matched (hasPrefix (trimSuffix "*" $pattern) $repo) -}}
+{{- else -}}
+{{- $repo_matched = or $repo_matched (eq $pattern $repo) -}}
+{{- end -}}
+{{- end }}
+{{- if not $repo_matched }}
+{{- $matches = false -}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if and $matches (get . "alias") }}
+{{ get . "name" | quote }} = {{ get . "alias" | quote }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end -}}
 {{- define "mise_structured_tools" -}}
-{{- $codespaces := index . "codespaces" -}}
+{{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
+{{- $repo := index . "repo" -}}
 {{- range index . "tools" }}
 {{- if not (kindIs "string" .) }}
+{{- $matches := true -}}
 {{- $asset_pattern := get . "asset_pattern" -}}
 {{- $bin_path := get . "bin_path" -}}
-{{- $tool_os := get . "os" -}}
-{{- $local_only := get . "local_only" -}}
-{{- if and (or $asset_pattern $bin_path) (or (not $tool_os) (eq $tool_os $os)) (or (not $local_only) (not $codespaces)) }}
+{{- $filters := get . "filters" -}}
+{{- if $filters }}
+{{- $tool_os := get $filters "os" -}}
+{{- if and $tool_os (not (has $os $tool_os)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_environments := get $filters "environment" -}}
+{{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_repos := get $filters "repo" -}}
+{{- if $tool_repos }}
+{{- $repo_matched := false -}}
+{{- range $tool_repos }}
+{{- $pattern := . -}}
+{{- if eq $pattern "*" -}}
+{{- $repo_matched = true -}}
+{{- else if hasSuffix "/*" $pattern -}}
+{{- $repo_matched = or $repo_matched (hasPrefix (trimSuffix "*" $pattern) $repo) -}}
+{{- else -}}
+{{- $repo_matched = or $repo_matched (eq $pattern $repo) -}}
+{{- end -}}
+{{- end }}
+{{- if not $repo_matched }}
+{{- $matches = false -}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if and $matches (or $asset_pattern $bin_path) }}
 
 [tools.{{ get . "name" | quote }}]
 version = {{ default "latest" (get . "version") | quote }}
@@ -30,69 +133,18 @@ bin_path = {{ $bin_path | quote }}
 {{- end }}
 {{- end }}
 {{- end -}}
+{{- $environment := "local" -}}
+{{- if .codespaces -}}
+{{- $environment = "codespace" -}}
+{{- else if eq (env "DEVCONTAINER") "true" -}}
+{{- $environment = "devcontainer" -}}
+{{- end -}}
 [tool_alias]
-{{- range .mise_tool_aliases }}
-{{- $local_darwin_only := get . "local_darwin_only" }}
-{{- if or (not $local_darwin_only) (and (not $.codespaces) (eq $.chezmoi.os "darwin")) }}
-{{ get . "name" }} = {{ get . "value" | quote }}
-{{- end }}
-{{- end }}
+{{ template "mise_aliases" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo }}
 
 [tools]
-# === Always installed (all environments) ===
-{{ template "mise_plain_tools" .mise_tools_always }}
-{{ template "mise_plain_tools" .mise_tools_platform }}
-
-{{- if .codespaces }}
-# === Codespaces base ===
-{{ template "mise_plain_tools" .mise_tools_codespaces_base }}
-
-# === Codespaces default tools (from .chezmoidata.yaml) ===
-{{ template "mise_plain_tools" .codespaces_default_tools }}
-
-# === Pattern-matched layers (from .chezmoidata.yaml) ===
-{{- range .codespaces_tool_layers }}
-{{- $pattern := .pattern }}
-{{- $matched := false }}
-{{- if eq $pattern "*" }}
-{{- $matched = true }}
-{{- else if hasSuffix "/*" $pattern }}
-{{- $matched = hasPrefix (trimSuffix "*" $pattern) $.repo }}
-{{- else }}
-{{- $matched = eq $pattern $.repo }}
-{{- end }}
-{{- if $matched }}
-# Layer: {{ $pattern }}
-{{ template "mise_plain_tools" .tools }}
-{{- end }}
-{{- end }}
-
-{{- else }}
-# === Local machine tools ===
-{{ template "mise_plain_tools" .mise_tools_local }}
-{{- end }}
-
-{{ template "mise_structured_tools" dict "tools" .mise_tools_always "codespaces" .codespaces "os" .chezmoi.os }}
-{{ template "mise_structured_tools" dict "tools" .mise_tools_platform "codespaces" .codespaces "os" .chezmoi.os }}
-{{- if .codespaces }}
-{{ template "mise_structured_tools" dict "tools" .mise_tools_codespaces_base "codespaces" .codespaces "os" .chezmoi.os }}
-{{ template "mise_structured_tools" dict "tools" .codespaces_default_tools "codespaces" .codespaces "os" .chezmoi.os }}
-{{- range .codespaces_tool_layers }}
-{{- $pattern := .pattern }}
-{{- $matched := false }}
-{{- if eq $pattern "*" }}
-{{- $matched = true }}
-{{- else if hasSuffix "/*" $pattern }}
-{{- $matched = hasPrefix (trimSuffix "*" $pattern) $.repo }}
-{{- else }}
-{{- $matched = eq $pattern $.repo }}
-{{- end }}
-{{- if $matched }}
-{{ template "mise_structured_tools" dict "tools" .tools "codespaces" $.codespaces "os" $.chezmoi.os }}
-{{- end }}
-{{- end }}
-{{- else }}
-{{ template "mise_structured_tools" dict "tools" .mise_tools_local "codespaces" .codespaces "os" .chezmoi.os }}
-{{- end }}
+# === Filtered mise tools (from .chezmoidata.yaml) ===
+{{ template "mise_plain_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo }}
+{{ template "mise_structured_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo }}
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
