@@ -47,3 +47,7 @@ This applies to all PR creation tools, skills, and workflows (gh CLI, create-pr 
 - Never use `git commit --amend` or `git push --force` / `--force-with-lease` without explicit permission
 - If you believe amending or force-pushing would be beneficial, ask for permission first — do not just do it
 - The user can squash at merge time if they want a single commit
+
+## Development and Testing
+
+Use TDD (Test Driven Development) when doing changes. 
