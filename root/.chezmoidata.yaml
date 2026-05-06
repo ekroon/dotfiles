@@ -127,3 +127,4 @@ mise_tools:
     filters:
       environment: [codespace]
       repo: ["github/*"]
+  - name: "npm:@mariozechner/pi-coding-agent"
