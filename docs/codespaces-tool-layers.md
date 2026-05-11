@@ -16,6 +16,17 @@ mise_tools:
     filters:
       environment: [codespace]
       repo: ["github/*"]
+  - name: "github:ogulcancelik/herdr"
+    version: latest
+    variants:
+      - asset_pattern: "herdr-macos-aarch64"
+        bin_path: "herdr-macos-aarch64"
+        filters:
+          os: [darwin]
+      - asset_pattern: "herdr-linux-x86_64"
+        bin_path: "herdr-linux-x86_64"
+        filters:
+          os: [linux]
 ```
 
 Object fields:
@@ -25,6 +36,13 @@ Object fields:
 - `version`: optional version, defaults to `latest`
 - `asset_pattern` and `bin_path`: optional structured mise tool settings
 - `filters`: optional match rules
+- `variants`: optional list of per-environment overrides merged with the
+  parent entry before rendering
+
+Use `variants` when one logical tool needs different structured settings across
+platforms or environments. Parent fields such as `name`, `alias`, and `version`
+are shared; variant fields such as `filters`, `asset_pattern`, and `bin_path`
+override or extend the parent for that concrete render.
 
 ## Filter syntax
 

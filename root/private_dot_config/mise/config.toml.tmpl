@@ -1,13 +1,13 @@
-{{- define "mise_plain_tools" -}}
+{{- define "mise_plain_tool" -}}
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
-{{- range index . "tools" }}
-{{- if kindIs "string" . }}
-{{ . | quote }} = "latest"
-{{- else }}
+{{- $tool := index . "tool" -}}
+{{- if kindIs "string" $tool }}
+{{ $tool | quote }} = "latest"
+{{- else if not (get $tool "variants") }}
 {{- $matches := true -}}
-{{- $filters := get . "filters" -}}
+{{- $filters := get $tool "filters" -}}
 {{- if $filters }}
 {{- $tool_os := get $filters "os" -}}
 {{- if and $tool_os (not (has $os $tool_os)) }}
@@ -35,9 +35,64 @@
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if and $matches (not (or (get . "asset_pattern") (get . "bin_path"))) }}
-{{ get . "name" | quote }} = {{ default "latest" (get . "version") | quote }}
+{{- if and $matches (not (or (get $tool "asset_pattern") (get $tool "bin_path"))) }}
+{{ get $tool "name" | quote }} = {{ default "latest" (get $tool "version") | quote }}
 {{- end }}
+{{- end }}
+{{- end -}}
+{{- define "mise_plain_tools" -}}
+{{- $environment := index . "environment" -}}
+{{- $os := index . "os" -}}
+{{- $repo := index . "repo" -}}
+{{- range index . "tools" }}
+{{- if and (not (kindIs "string" .)) (get . "variants") }}
+{{- $base := deepCopy . -}}
+{{- $_ := unset $base "variants" -}}
+{{- range get . "variants" }}
+{{- template "mise_plain_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo }}
+{{- end }}
+{{- else }}
+{{- template "mise_plain_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo }}
+{{- end }}
+{{- end }}
+{{- end -}}
+{{- define "mise_alias" -}}
+{{- $environment := index . "environment" -}}
+{{- $os := index . "os" -}}
+{{- $repo := index . "repo" -}}
+{{- $tool := index . "tool" -}}
+{{- if and (not (kindIs "string" $tool)) (not (get $tool "variants")) }}
+{{- $matches := true -}}
+{{- $filters := get $tool "filters" -}}
+{{- if $filters }}
+{{- $tool_os := get $filters "os" -}}
+{{- if and $tool_os (not (has $os $tool_os)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_environments := get $filters "environment" -}}
+{{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_repos := get $filters "repo" -}}
+{{- if $tool_repos }}
+{{- $repo_matched := false -}}
+{{- range $tool_repos }}
+{{- $pattern := . -}}
+{{- if eq $pattern "*" -}}
+{{- $repo_matched = true -}}
+{{- else if hasSuffix "/*" $pattern -}}
+{{- $repo_matched = or $repo_matched (hasPrefix (trimSuffix "*" $pattern) $repo) -}}
+{{- else -}}
+{{- $repo_matched = or $repo_matched (eq $pattern $repo) -}}
+{{- end -}}
+{{- end }}
+{{- if not $repo_matched }}
+{{- $matches = false -}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if and $matches (get $tool "alias") }}
+{{ get $tool "name" | quote }} = {{ get $tool "alias" | quote }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -46,52 +101,27 @@
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
 {{- range index . "tools" }}
-{{- if not (kindIs "string" .) }}
-{{- $matches := true -}}
-{{- $filters := get . "filters" -}}
-{{- if $filters }}
-{{- $tool_os := get $filters "os" -}}
-{{- if and $tool_os (not (has $os $tool_os)) }}
-{{- $matches = false -}}
+{{- if and (not (kindIs "string" .)) (get . "variants") }}
+{{- $base := deepCopy . -}}
+{{- $_ := unset $base "variants" -}}
+{{- range get . "variants" }}
+{{- template "mise_alias" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo }}
 {{- end }}
-{{- $tool_environments := get $filters "environment" -}}
-{{- if and $tool_environments (not (has $environment $tool_environments)) }}
-{{- $matches = false -}}
-{{- end }}
-{{- $tool_repos := get $filters "repo" -}}
-{{- if $tool_repos }}
-{{- $repo_matched := false -}}
-{{- range $tool_repos }}
-{{- $pattern := . -}}
-{{- if eq $pattern "*" -}}
-{{- $repo_matched = true -}}
-{{- else if hasSuffix "/*" $pattern -}}
-{{- $repo_matched = or $repo_matched (hasPrefix (trimSuffix "*" $pattern) $repo) -}}
-{{- else -}}
-{{- $repo_matched = or $repo_matched (eq $pattern $repo) -}}
-{{- end -}}
-{{- end }}
-{{- if not $repo_matched }}
-{{- $matches = false -}}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- if and $matches (get . "alias") }}
-{{ get . "name" | quote }} = {{ get . "alias" | quote }}
-{{- end }}
+{{- else }}
+{{- template "mise_alias" dict "tool" . "environment" $environment "os" $os "repo" $repo }}
 {{- end }}
 {{- end }}
 {{- end -}}
-{{- define "mise_structured_tools" -}}
+{{- define "mise_structured_tool" -}}
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
-{{- range index . "tools" }}
-{{- if not (kindIs "string" .) }}
+{{- $tool := index . "tool" -}}
+{{- if and (not (kindIs "string" $tool)) (not (get $tool "variants")) }}
 {{- $matches := true -}}
-{{- $asset_pattern := get . "asset_pattern" -}}
-{{- $bin_path := get . "bin_path" -}}
-{{- $filters := get . "filters" -}}
+{{- $asset_pattern := get $tool "asset_pattern" -}}
+{{- $bin_path := get $tool "bin_path" -}}
+{{- $filters := get $tool "filters" -}}
 {{- if $filters }}
 {{- $tool_os := get $filters "os" -}}
 {{- if and $tool_os (not (has $os $tool_os)) }}
@@ -121,8 +151,8 @@
 {{- end }}
 {{- if and $matches (or $asset_pattern $bin_path) }}
 
-[tools.{{ get . "name" | quote }}]
-version = {{ default "latest" (get . "version") | quote }}
+[tools.{{ get $tool "name" | quote }}]
+version = {{ default "latest" (get $tool "version") | quote }}
 {{- if $asset_pattern }}
 asset_pattern = {{ $asset_pattern | quote }}
 {{- end }}
@@ -130,6 +160,21 @@ asset_pattern = {{ $asset_pattern | quote }}
 bin_path = {{ $bin_path | quote }}
 {{- end }}
 {{- end }}
+{{- end }}
+{{- end -}}
+{{- define "mise_structured_tools" -}}
+{{- $environment := index . "environment" -}}
+{{- $os := index . "os" -}}
+{{- $repo := index . "repo" -}}
+{{- range index . "tools" }}
+{{- if and (not (kindIs "string" .)) (get . "variants") }}
+{{- $base := deepCopy . -}}
+{{- $_ := unset $base "variants" -}}
+{{- range get . "variants" }}
+{{- template "mise_structured_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo }}
+{{- end }}
+{{- else }}
+{{- template "mise_structured_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo }}
 {{- end }}
 {{- end }}
 {{- end -}}

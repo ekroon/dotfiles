@@ -128,3 +128,14 @@ mise_tools:
       environment: [codespace]
       repo: ["github/*"]
   - name: "npm:@mariozechner/pi-coding-agent"
+  - name: "github:ogulcancelik/herdr"
+    version: latest
+    variants:
+      - asset_pattern: "herdr-macos-aarch64"
+        bin_path: "herdr-macos-aarch64"
+        filters:
+          os: [darwin]
+      - asset_pattern: "herdr-linux-x86_64"
+        bin_path: "herdr-linux-x86_64"
+        filters:
+          os: [linux]
