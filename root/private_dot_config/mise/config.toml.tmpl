@@ -35,7 +35,7 @@
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if and $matches (not (or (get $tool "asset_pattern") (get $tool "bin_path"))) }}
+{{- if and $matches (not (or (get $tool "asset_pattern") (get $tool "bin") (get $tool "bin_path"))) }}
 {{ get $tool "name" | quote }} = {{ default "latest" (get $tool "version") | quote }}
 {{- end }}
 {{- end }}
@@ -120,6 +120,7 @@
 {{- if and (not (kindIs "string" $tool)) (not (get $tool "variants")) }}
 {{- $matches := true -}}
 {{- $asset_pattern := get $tool "asset_pattern" -}}
+{{- $bin := get $tool "bin" -}}
 {{- $bin_path := get $tool "bin_path" -}}
 {{- $filters := get $tool "filters" -}}
 {{- if $filters }}
@@ -149,12 +150,15 @@
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if and $matches (or $asset_pattern $bin_path) }}
+{{- if and $matches (or $asset_pattern $bin $bin_path) }}
 
 [tools.{{ get $tool "name" | quote }}]
 version = {{ default "latest" (get $tool "version") | quote }}
 {{- if $asset_pattern }}
 asset_pattern = {{ $asset_pattern | quote }}
+{{- end }}
+{{- if $bin }}
+bin = {{ $bin | quote }}
 {{- end }}
 {{- if $bin_path }}
 bin_path = {{ $bin_path | quote }}

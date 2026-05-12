@@ -132,10 +132,10 @@ mise_tools:
     version: latest
     variants:
       - asset_pattern: "herdr-macos-aarch64"
-        bin_path: "herdr-macos-aarch64"
+        bin: "herdr"
         filters:
           os: [darwin]
       - asset_pattern: "herdr-linux-x86_64"
-        bin_path: "herdr-linux-x86_64"
+        bin: "herdr"
         filters:
           os: [linux]
