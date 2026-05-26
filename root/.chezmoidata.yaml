@@ -127,7 +127,7 @@ mise_tools:
     filters:
       environment: [codespace]
       repo: ["github/*"]
-  - name: "npm:@mariozechner/pi-coding-agent"
+  - name: "npm:@earendil-works/pi-coding-agent"
   - name: "github:ogulcancelik/herdr"
     version: latest
     variants:
