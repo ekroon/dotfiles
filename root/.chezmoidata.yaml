@@ -3,6 +3,7 @@ homebrew_bundle:
   taps: []
   formulae:
     - ghq
+    - neovim
     - terminal-notifier
   casks: []
   mas_apps: []
@@ -58,6 +59,13 @@ mise_tools:
       environment: [local]
   - name: direnv
     filters:
+      environment: [codespace, devcontainer]
+  - name: "github:neovim/neovim"
+    version: latest
+    asset_pattern: "nvim-linux-x86_64.appimage"
+    bin: "nvim"
+    filters:
+      os: [linux]
       environment: [codespace, devcontainer]
   - name: "github:BurntSushi/ripgrep[matching=musl]"
     filters:
