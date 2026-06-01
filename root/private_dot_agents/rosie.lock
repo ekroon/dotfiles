@@ -1,0 +1,13 @@
+# rosie-lock v1
+agentic-progressive-disclosure-architecture ekroon/copilot-catalog main de8c2ae81fa45d6465ad699d91345a9a7816b599 2026-06-01T09:09:06Z pin skill
+azure-kusto microsoft/azure-skills main d3440b8a4f138585a512ecd4e0c54ede13ab1cc2 2026-06-01T09:09:09Z pin skill
+create-pr ekroon/copilot-catalog main de8c2ae81fa45d6465ad699d91345a9a7816b599 2026-06-01T09:09:10Z pin skill
+find-skills vercel-labs/skills main b469d6954dd10be20d3e8d9bb59463584d42efbb 2026-06-01T09:09:11Z pin skill
+git-commit ekroon/tabctl main ce3ef4552b789312236ab61fd91865cabcf6adc2 2026-06-01T09:09:13Z pin skill
+grill-me mattpocock/skills main aaf2453fbdfe7a15c07f11d861224f34ab4b53cb 2026-06-01T09:09:14Z pin skill
+handoff mattpocock/skills main aaf2453fbdfe7a15c07f11d861224f34ab4b53cb 2026-06-01T09:09:15Z pin skill
+playwright-cli microsoft/playwright-cli main 3a1bafc8b4e973c72d0364eb5b427d1ce0aa8317 2026-06-01T09:09:16Z pin skill
+pretty-mermaid imxv/Pretty-mermaid-skills main e33f086d3b5bcec9f28632e4bd9c348b02bb2278 2026-06-01T09:09:18Z pin skill
+skill-creator anthropics/skills main da20c92503b2e8ff1cf28ca81a0df4673debdbf7 2026-06-01T09:09:20Z pin skill
+splunk-log-analysis file://./.cache/rosie/private/github-agent-skills/splunk-log-analysis-skill - - 2026-06-01T09:09:22Z pin skill
+tabctl ekroon/tabctl main ce3ef4552b789312236ab61fd91865cabcf6adc2 2026-06-01T09:09:22Z pin skill

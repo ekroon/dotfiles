@@ -50,6 +50,10 @@ mise_tools:
   - name: gh
     filters:
       environment: [codespace, devcontainer]
+  - name: "github:x-motemen/ghq"
+    version: latest
+    filters:
+      environment: [codespace, devcontainer]
   - name: tmux
     filters:
       environment: [codespace, devcontainer]
@@ -106,6 +110,7 @@ mise_tools:
     filters:
       os: [darwin]
       environment: [local]
+  - name: "npm:rosie-skills"
   - name: "github:ekroon/copilot-token-cost"
     filters:
       os: [darwin]
@@ -147,3 +152,10 @@ mise_tools:
         bin: "herdr"
         filters:
           os: [linux]
+
+# Agent skill management
+agent_skills:
+  private_github_agent_skills:
+    managed_checkout_relative_path: ".cache/rosie/private/github-agent-skills"
+    ref: "07770dbfdc26d208eaca6013b1c5811fa39d5438"
+    skill_path: "splunk-log-analysis-skill"

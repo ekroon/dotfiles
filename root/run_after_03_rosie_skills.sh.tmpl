@@ -1,0 +1,67 @@
+#!/bin/bash
+set -e
+
+if ! command -v rosie-skills >/dev/null 2>&1; then
+  echo "rosie-skills is not available; skipping skill install"
+  exit 0
+fi
+
+{{- $private := .agent_skills.private_github_agent_skills }}
+managed_checkout_dir="${HOME}/{{ $private.managed_checkout_relative_path }}"
+ghq_repo_path=""
+
+if command -v ghq >/dev/null 2>&1; then
+  if ghq get --update --silent github.com/github/agent-skills >/dev/null 2>&1; then
+    ghq_repo_path="$(ghq list --full-path --exact github/agent-skills | head -n 1)"
+  else
+    echo "ghq could not fetch private github/agent-skills; rosie will skip private skills if no checkout is available"
+  fi
+else
+  echo "ghq is not available; rosie will skip private skills if no checkout is available"
+fi
+
+if [ -n "${ghq_repo_path}" ]; then
+  mkdir -p "$(dirname "${managed_checkout_dir}")"
+  if [ -L "${managed_checkout_dir}" ] || [ ! -e "${managed_checkout_dir}" ]; then
+    ln -sfn "${ghq_repo_path}" "${managed_checkout_dir}"
+  elif [ ! -d "${managed_checkout_dir}/.git" ]; then
+    echo "Managed private skills path exists but is not a git checkout; rosie will skip private skills"
+  fi
+fi
+
+if [ ! -d "${managed_checkout_dir}/.git" ]; then
+  echo "Private github/agent-skills checkout unavailable; rosie will skip private skills"
+fi
+
+if [ -d "${managed_checkout_dir}/.git" ]; then
+  if git -C "${managed_checkout_dir}" cat-file -e "{{ $private.ref }}^{commit}" 2>/dev/null || git -C "${managed_checkout_dir}" fetch --quiet origin; then
+    git -C "${managed_checkout_dir}" checkout --quiet "{{ $private.ref }}"
+    if [ ! -f "${managed_checkout_dir}/{{ $private.skill_path }}/SKILL.md" ]; then
+      echo "Private skill path missing in github/agent-skills checkout; rosie will skip private skills"
+    fi
+  else
+    echo "Could not fetch private github/agent-skills ref; rosie will skip private skills if the source is missing"
+  fi
+fi
+
+echo "Installing rosie-managed skills for GitHub Copilot and Pi..."
+lockfile="${HOME}/.agents/rosie.lock"
+if [ ! -f "${lockfile}" ]; then
+  echo "Rosie lockfile is missing; skipping skill install"
+  exit 0
+fi
+
+lockfile_snapshot="$(mktemp)"
+cp "${lockfile}" "${lockfile_snapshot}"
+
+set +e
+rosie-skills --cwd "${HOME}" install -a copilot -a pi -y
+rosie_status=$?
+set -e
+
+if ! cmp -s "${lockfile_snapshot}" "${lockfile}"; then
+  cp "${lockfile_snapshot}" "${lockfile}"
+fi
+rm -f "${lockfile_snapshot}"
+
+exit "${rosie_status}"

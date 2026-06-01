@@ -146,6 +146,7 @@ stylua --config-path root/private_dot_config/nvim/stylua.toml root/private_dot_c
 
 ## Secrets and safety
 - Avoid committing real credentials or tokens; use env vars or templated prompts.
+- Avoid exposing literal user home-directory paths in user-facing output or generated artifacts; use template variables, `$HOME`, or neutral labels instead.
 - Prefer `private_` prefix for sensitive files to enforce 0600 permissions.
 - If a template needs secrets, keep them in `.chezmoi.toml.tmpl` or prompt interactively.
 - Double-check `root/private_dot_config/` changes for accidental secrets.
