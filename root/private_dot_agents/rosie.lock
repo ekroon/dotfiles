@@ -1,6 +1,7 @@
 # rosie-lock v1
 agentic-progressive-disclosure-architecture ekroon/copilot-catalog main de8c2ae81fa45d6465ad699d91345a9a7816b599 2026-06-01T09:09:06Z pin skill
 azure-kusto microsoft/azure-skills main d3440b8a4f138585a512ecd4e0c54ede13ab1cc2 2026-06-01T09:09:09Z pin skill
+crabbox openclaw/crabbox main a47e886dbff746683931b5d84f165fa63aee662c 2026-06-09T14:17:43Z pin skill
 create-pr ekroon/copilot-catalog main de8c2ae81fa45d6465ad699d91345a9a7816b599 2026-06-01T09:09:10Z pin skill
 find-skills vercel-labs/skills main b469d6954dd10be20d3e8d9bb59463584d42efbb 2026-06-01T09:09:11Z pin skill
 git-commit ekroon/tabctl main ce3ef4552b789312236ab61fd91865cabcf6adc2 2026-06-01T09:09:13Z pin skill
