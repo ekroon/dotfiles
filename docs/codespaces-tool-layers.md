@@ -16,6 +16,11 @@ mise_tools:
     filters:
       environment: [codespace]
       repo: ["github/*"]
+  - name: "github:ekroon/focal-builds[matching=neovim]"
+    filters:
+      os: [linux]
+      environment: [codespace, devcontainer]
+      distro_codename: [focal]
   - name: "github:ogulcancelik/herdr"
     version: latest
     variants:
@@ -54,9 +59,13 @@ match everywhere.
 | `os` | Go OS values such as `darwin` or `linux` |
 | `environment` | `local`, `codespace`, or `devcontainer` |
 | `repo` | Exact `org/repo`, org prefix `org/*`, or catch-all `*` |
+| `distro_codename` | Linux distribution codename such as `focal` |
+| `not_distro_codename` | Exclude Linux distribution codenames such as `focal` |
 
 Repository filters match `GITHUB_REPOSITORY`. Environment is derived as:
 Codespaces first, then `DEVCONTAINER=true`, then local.
+Distribution codename is derived from `MISE_DISTRO_CODENAME` when set, otherwise
+from `/etc/os-release` on Linux.
 
 ## Testing
 
@@ -68,6 +77,9 @@ chezmoi cat ~/.config/mise/config.toml
 
 # Codespace render for a GitHub repo
 CODESPACES=true GITHUB_REPOSITORY=github/github chezmoi cat ~/.config/mise/config.toml
+
+# Ubuntu focal Codespace render
+MISE_DISTRO_CODENAME=focal CODESPACES=true GITHUB_REPOSITORY=github/github chezmoi cat ~/.config/mise/config.toml
 
 # Devcontainer render
 DEVCONTAINER=true GITHUB_REPOSITORY=github/github chezmoi cat ~/.config/mise/config.toml

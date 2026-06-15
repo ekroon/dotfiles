@@ -2,6 +2,7 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $distro_codename := index . "distro_codename" -}}
 {{- $tool := index . "tool" -}}
 {{- if kindIs "string" $tool }}
 {{ $tool | quote }} = "latest"
@@ -15,6 +16,14 @@
 {{- end }}
 {{- $tool_environments := get $filters "environment" -}}
 {{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_distro_codenames := get $filters "distro_codename" -}}
+{{- if and $tool_distro_codenames (not (has $distro_codename $tool_distro_codenames)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_not_distro_codenames := get $filters "not_distro_codename" -}}
+{{- if and $tool_not_distro_codenames (has $distro_codename $tool_not_distro_codenames) }}
 {{- $matches = false -}}
 {{- end }}
 {{- $tool_repos := get $filters "repo" -}}
@@ -44,15 +53,16 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $distro_codename := index . "distro_codename" -}}
 {{- range index . "tools" }}
 {{- if and (not (kindIs "string" .)) (get . "variants") }}
 {{- $base := deepCopy . -}}
 {{- $_ := unset $base "variants" -}}
 {{- range get . "variants" }}
-{{- template "mise_plain_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo }}
+{{- template "mise_plain_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
 {{- end }}
 {{- else }}
-{{- template "mise_plain_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo }}
+{{- template "mise_plain_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -60,6 +70,7 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $distro_codename := index . "distro_codename" -}}
 {{- $tool := index . "tool" -}}
 {{- if and (not (kindIs "string" $tool)) (not (get $tool "variants")) }}
 {{- $matches := true -}}
@@ -71,6 +82,14 @@
 {{- end }}
 {{- $tool_environments := get $filters "environment" -}}
 {{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_distro_codenames := get $filters "distro_codename" -}}
+{{- if and $tool_distro_codenames (not (has $distro_codename $tool_distro_codenames)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_not_distro_codenames := get $filters "not_distro_codename" -}}
+{{- if and $tool_not_distro_codenames (has $distro_codename $tool_not_distro_codenames) }}
 {{- $matches = false -}}
 {{- end }}
 {{- $tool_repos := get $filters "repo" -}}
@@ -100,15 +119,16 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $distro_codename := index . "distro_codename" -}}
 {{- range index . "tools" }}
 {{- if and (not (kindIs "string" .)) (get . "variants") }}
 {{- $base := deepCopy . -}}
 {{- $_ := unset $base "variants" -}}
 {{- range get . "variants" }}
-{{- template "mise_alias" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo }}
+{{- template "mise_alias" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
 {{- end }}
 {{- else }}
-{{- template "mise_alias" dict "tool" . "environment" $environment "os" $os "repo" $repo }}
+{{- template "mise_alias" dict "tool" . "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -116,6 +136,7 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $distro_codename := index . "distro_codename" -}}
 {{- $tool := index . "tool" -}}
 {{- if and (not (kindIs "string" $tool)) (not (get $tool "variants")) }}
 {{- $matches := true -}}
@@ -130,6 +151,14 @@
 {{- end }}
 {{- $tool_environments := get $filters "environment" -}}
 {{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_distro_codenames := get $filters "distro_codename" -}}
+{{- if and $tool_distro_codenames (not (has $distro_codename $tool_distro_codenames)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_not_distro_codenames := get $filters "not_distro_codename" -}}
+{{- if and $tool_not_distro_codenames (has $distro_codename $tool_not_distro_codenames) }}
 {{- $matches = false -}}
 {{- end }}
 {{- $tool_repos := get $filters "repo" -}}
@@ -170,15 +199,16 @@ bin_path = {{ $bin_path | quote }}
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $distro_codename := index . "distro_codename" -}}
 {{- range index . "tools" }}
 {{- if and (not (kindIs "string" .)) (get . "variants") }}
 {{- $base := deepCopy . -}}
 {{- $_ := unset $base "variants" -}}
 {{- range get . "variants" }}
-{{- template "mise_structured_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo }}
+{{- template "mise_structured_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
 {{- end }}
 {{- else }}
-{{- template "mise_structured_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo }}
+{{- template "mise_structured_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -188,12 +218,16 @@ bin_path = {{ $bin_path | quote }}
 {{- else if eq (env "DEVCONTAINER") "true" -}}
 {{- $environment = "devcontainer" -}}
 {{- end -}}
+{{- $distro_codename := env "MISE_DISTRO_CODENAME" -}}
+{{- if and (not $distro_codename) (eq .chezmoi.os "linux") -}}
+{{- $distro_codename = output "sh" "-c" "sed -n 's/^VERSION_CODENAME=//p' /etc/os-release 2>/dev/null | tr -d '\"' | head -n1" | trim -}}
+{{- end -}}
 [tool_alias]
-{{ template "mise_aliases" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo }}
+{{ template "mise_aliases" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "distro_codename" $distro_codename }}
 
 [tools]
 # === Filtered mise tools (from .chezmoidata.yaml) ===
-{{ template "mise_plain_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo }}
-{{ template "mise_structured_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo }}
+{{ template "mise_plain_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "distro_codename" $distro_codename }}
+{{ template "mise_structured_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "distro_codename" $distro_codename }}
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
