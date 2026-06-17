@@ -122,7 +122,7 @@ mise_tools:
       os: [darwin]
       environment: [local]
   - name: "github:ekroon/tabctl"
-    version: "v0.6.0-rc.7"
+    version: "v0.6.0-rc.12"
     filters:
       os: [darwin]
       environment: [local]
