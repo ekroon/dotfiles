@@ -1,14 +1,14 @@
 # rosie-lock v1
 agentic-progressive-disclosure-architecture ekroon/copilot-catalog main de8c2ae81fa45d6465ad699d91345a9a7816b599 2026-06-01T09:09:06Z pin skill
-azure-kusto microsoft/azure-skills main 82492494405b948c8422766ddae390714bbd78ed 2026-06-15T21:03:49Z pin skill
+azure-kusto microsoft/azure-skills main 3edfc3e7636d20c43fe7b24e9e6ca2c9e41c4ac7 2026-06-18T16:15:53Z pin skill
 crabbox openclaw/crabbox main a47e886dbff746683931b5d84f165fa63aee662c 2026-06-09T14:17:43Z pin skill
 create-pr ekroon/copilot-catalog main de8c2ae81fa45d6465ad699d91345a9a7816b599 2026-06-01T09:09:10Z pin skill
 find-skills vercel-labs/skills main be0dd25b4a8665894a56f45ef582cc02ca802c39 2026-06-15T21:03:52Z pin skill
-git-commit ekroon/tabctl main c8cf4700cd36ccd468ffa5c1db5dd3fd65cf5549 2026-06-15T21:03:53Z pin skill
-grill-me mattpocock/skills main 694fa30311e02c2639942308513555e61ee84a6f 2026-06-15T21:03:54Z pin skill
-handoff mattpocock/skills main 694fa30311e02c2639942308513555e61ee84a6f 2026-06-15T21:03:55Z pin skill
+git-commit ekroon/tabctl main d83404a96cf76fa045eee506c1b8c30898338d0f 2026-06-18T16:15:56Z pin skill
+grill-me mattpocock/skills main 6eeb81b5fcfeeb5bd531dd47ab2f9f2bbea27461 2026-06-18T16:15:57Z pin skill
+handoff mattpocock/skills main 6eeb81b5fcfeeb5bd531dd47ab2f9f2bbea27461 2026-06-18T16:15:58Z pin skill
 playwright-cli microsoft/playwright-cli main 9b118a1a737662fa118d591b5687340b86005d5c 2026-06-15T21:03:57Z pin skill
 pretty-mermaid imxv/Pretty-mermaid-skills main e33f086d3b5bcec9f28632e4bd9c348b02bb2278 2026-06-01T09:09:18Z pin skill
 skill-creator anthropics/skills main 57546260929473d4e0d1c1bb75297be2fdfa1949 2026-06-15T21:04:00Z pin skill
-splunk-log-analysis file://./.cache/rosie/private/github-agent-skills/splunk-log-analysis-skill - - 2026-06-01T09:09:22Z pin skill
-tabctl ekroon/tabctl main c8cf4700cd36ccd468ffa5c1db5dd3fd65cf5549 2026-06-15T21:04:01Z pin skill
+splunk-log-analysis file://./.cache/rosie/private/github-agent-skills/splunk-log-analysis-skill - - 2026-06-18T16:17:43Z pin skill
+tabctl ekroon/tabctl main d83404a96cf76fa045eee506c1b8c30898338d0f 2026-06-18T16:16:00Z pin skill
