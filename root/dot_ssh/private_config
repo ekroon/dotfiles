@@ -1,3 +1,4 @@
+Include ~/.ssh/github-codespaces
 Include ~/.orbstack/ssh/config
 
 Host *
@@ -13,4 +14,3 @@ Host bastion*.githubapp.com vault-bastion*.githubapp.com
 Host *.github.com *.github.net *.githubapp.com
   ForwardAgent no
   User ekroon
-
