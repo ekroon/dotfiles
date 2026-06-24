@@ -1,0 +1,75 @@
+(defcfg
+  process-unmapped-keys yes
+  concurrent-tap-hold yes
+  macos-dev-names-include (
+    "Apple Internal Keyboard / Trackpad"
+    "Keychron Ultra-Link 8K"
+  )
+)
+
+(defsrc
+  caps
+  tab
+  lctl
+  lalt
+  lmet
+  ;
+  '
+  rmet
+  ralt
+  r
+)
+
+(defalias
+  cap (tap-hold-press 200 200 esc lctl)
+  meh (multi lctl lalt lsft (layer-while-held meh) reverse-release-order)
+  tabmeh (tap-hold-press 200 200 tab @meh)
+  lctlopt (multi lctl lalt reverse-release-order)
+  smeh (tap-hold-press 200 200 ; @meh)
+  qctl (tap-hold-press 200 200 ' lctl)
+  cmdhyper (multi lmet (layer-while-held hyper) reverse-release-order)
+  rcmdhyper (multi rmet (layer-while-held hyper) reverse-release-order)
+)
+
+(deflayer base
+  @cap
+  @tabmeh
+  @lctlopt
+  lalt
+  lmet
+  @smeh
+  @qctl
+  rmet
+  ralt
+  r
+)
+
+(deflayer meh
+  _
+  _
+  _
+  _
+  @cmdhyper
+  _
+  _
+  @rcmdhyper
+  _
+  _
+)
+
+(deflayer hyper
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  lrld
+)
+
+(defchordsv2
+  (lmet rmet) fn 200 all-released ()
+)
