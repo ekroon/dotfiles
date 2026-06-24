@@ -1,13 +1,60 @@
 (defcfg
   process-unmapped-keys yes
   concurrent-tap-hold yes
+  ;; Device changes require restarting the LaunchDaemon; live reload is enough
+  ;; for keymap changes below.
   macos-dev-names-include (
     "Apple Internal Keyboard / Trackpad"
     "Keychron Ultra-Link 8K"
   )
 )
 
+;; macOS has internal Fn+F-key codes, but the built-in keyboard currently
+;; delivers Globe/Fn as a held `fn` key instead. These names are kept as a
+;; fallback in case a keyboard reports direct Fn+F-key inputs.
+(deflocalkeys-macos
+  fnf1 466
+  fnf2 467
+  fnf3 468
+  fnf4 469
+  fnf5 470
+  fnf6 471
+  fnf7 472
+  fnf8 473
+  fnf9 474
+  fnf10 475
+  fnf11 476
+  fnf12 477
+)
+
 (defsrc
+  ;; Plain top-row keys.
+  f1
+  f2
+  f3
+  f4
+  f5
+  f6
+  f7
+  f8
+  f9
+  f10
+  f11
+  f12
+  ;; Direct Fn+F-key inputs, if a device reports them.
+  fnf1
+  fnf2
+  fnf3
+  fnf4
+  fnf5
+  fnf6
+  fnf7
+  fnf8
+  fnf9
+  fnf10
+  fnf11
+  fnf12
+  ;; Ergonomic modifier keys and live-reload chord participants.
   caps
   tab
   lctl
@@ -18,20 +65,52 @@
   rmet
   ralt
   r
+  fn
 )
 
 (defalias
+  ;; Home-row-style ergonomic modifiers.
   cap (tap-hold-press 200 200 esc lctl)
   meh (multi lctl lalt lsft (layer-while-held meh) reverse-release-order)
   tabmeh (tap-hold-press 200 200 tab @meh)
   lctlopt (multi lctl lalt reverse-release-order)
   smeh (tap-hold 200 200 ; @meh)
   qctl (tap-hold 200 200 ' lctl)
+  ;; Holding Meh plus Command enters `hyper`, where R live-reloads Kanata.
   cmdhyper (multi lmet (layer-while-held hyper) reverse-release-order)
   rcmdhyper (multi rmet (layer-while-held hyper) reverse-release-order)
+  ;; Preserve normal F1-F12 by default; hold Globe/Fn for macOS special keys.
+  fnspc (multi fn (layer-while-held fnspecial) reverse-release-order)
 )
 
 (deflayer base
+  ;; Normal F keys by default, matching the macOS keyboard setting.
+  f1
+  f2
+  f3
+  f4
+  f5
+  f6
+  f7
+  f8
+  f9
+  f10
+  f11
+  f12
+  ;; If direct Fn+F inputs arrive, treat them as macOS special keys.
+  brdn
+  brup
+  mctl
+  sls
+  dtn
+  dnd
+  prev
+  pp
+  next
+  mute
+  vold
+  volu
+  ;; Main ergonomic layout.
   @cap
   @tabmeh
   @lctlopt
@@ -42,9 +121,36 @@
   rmet
   ralt
   r
+  @fnspc
 )
 
+;; Meh is Ctrl+Option+Shift. Command while Meh is held adds a transient
+;; `hyper` layer so Meh+Command+R can trigger live reload.
 (deflayer meh
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
   _
   _
   _
@@ -53,6 +159,7 @@
   _
   _
   @rcmdhyper
+  _
   _
   _
 )
@@ -67,9 +174,75 @@
   _
   _
   _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
   lrld
+  _
+)
+
+;; macOS special top-row behavior while Globe/Fn is held.
+(deflayer fnspecial
+  brdn
+  brup
+  mctl
+  sls
+  dtn
+  dnd
+  prev
+  pp
+  next
+  mute
+  vold
+  volu
+  brdn
+  brup
+  mctl
+  sls
+  dtn
+  dnd
+  prev
+  pp
+  next
+  mute
+  vold
+  volu
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
 )
 
 (defchordsv2
-  (lmet rmet) fn 200 all-released ()
+  ;; Both Command keys act like Globe/Fn for this config: they emit Fn and
+  ;; activate the same special top-row layer used by the physical Globe/Fn key.
+  (lmet rmet) @fnspc 200 all-released ()
 )
