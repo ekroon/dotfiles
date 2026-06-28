@@ -3,9 +3,11 @@ homebrew_bundle:
   taps: []
   formulae:
     - ghq
+    - kanata
     - neovim
     - terminal-notifier
-  casks: []
+  casks:
+    - karabiner-elements
   mas_apps: []
 
 # mise tool configuration

@@ -58,5 +58,9 @@ else
   echo "Warning: Failed to load com.erwin.log-rotate" >&2
 fi
 
+echo ""
+echo "Kanata LaunchDaemon installer is available at ${HOME}/.local/bin/install-kanata-launchdaemon.sh"
+echo "Run it with --install once to bootstrap /Library/LaunchDaemons/com.erwin.kanata.plist"
+
 echo "LaunchAgent setup complete"
 {{ end -}}

@@ -1,0 +1,28 @@
+{{- if eq .chezmoi.os "darwin" -}}
+{{- $kanata_prefix := output "sh" "-c" "if [ -x /opt/homebrew/bin/brew ]; then /opt/homebrew/bin/brew --prefix kanata 2>/dev/null; elif [ -x /usr/local/bin/brew ]; then /usr/local/bin/brew --prefix kanata 2>/dev/null; else echo '/opt/homebrew/opt/kanata'; fi" | trim -}}
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.erwin.kanata</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ $kanata_prefix }}/bin/kanata</string>
+        <string>--no-wait</string>
+        <string>--cfg</string>
+        <string>{{ .chezmoi.homeDir }}/.config/kanata/kanata.kbd</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>WorkingDirectory</key>
+    <string>{{ .chezmoi.homeDir }}</string>
+    <key>StandardOutPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/log/kanata.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/log/kanata.log</string>
+</dict>
+</plist>
+{{- end -}}

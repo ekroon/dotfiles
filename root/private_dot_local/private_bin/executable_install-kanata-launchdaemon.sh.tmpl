@@ -1,0 +1,143 @@
+#!/bin/bash
+set -euo pipefail
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+PLIST_SOURCE="{{ .chezmoi.homeDir }}/.config/kanata/com.erwin.kanata.plist"
+PLIST_TARGET="/Library/LaunchDaemons/com.erwin.kanata.plist"
+LABEL="com.erwin.kanata"
+LOG_DIR="{{ .chezmoi.homeDir }}/.local/log"
+
+usage() {
+  cat <<'EOF'
+Usage: install-kanata-launchdaemon.sh [--check|--install]
+
+  --check      Validate the rendered plist and kanata config without installing.
+  --install    Install the LaunchDaemon to /Library/LaunchDaemons and bootstrap it.
+
+The installer is intentionally explicit: it does not run sudo automatically unless you request --install.
+
+macOS note:
+  kanata requires Karabiner-Elements to be installed and fully available for the remap environment.
+  Make sure the Karabiner-Elements app is installed before bootstrapping the LaunchDaemon.
+EOF
+}
+
+resolve_kanata_binary() {
+  if command -v kanata >/dev/null 2>&1; then
+    command -v kanata
+    return 0
+  fi
+
+  if [ -x /opt/homebrew/opt/kanata/bin/kanata ]; then
+    echo /opt/homebrew/opt/kanata/bin/kanata
+    return 0
+  fi
+
+  if [ -x /usr/local/opt/kanata/bin/kanata ]; then
+    echo /usr/local/opt/kanata/bin/kanata
+    return 0
+  fi
+
+  if command -v brew >/dev/null 2>&1; then
+    local prefix
+    prefix="$(brew --prefix kanata 2>/dev/null || true)"
+    if [ -n "$prefix" ]; then
+      echo "$prefix/bin/kanata"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+ensure_sudo() {
+  if ! command -v sudo >/dev/null 2>&1; then
+    echo "sudo is required to install the LaunchDaemon" >&2
+    exit 1
+  fi
+}
+
+validate_inputs() {
+  if [ ! -f "$PLIST_SOURCE" ]; then
+    echo "Expected rendered plist at $PLIST_SOURCE" >&2
+    exit 1
+  fi
+
+  plutil -lint "$PLIST_SOURCE" >/dev/null
+
+  mkdir -p "$LOG_DIR"
+
+  if ! command -v brew >/dev/null 2>&1; then
+    echo "Homebrew is required to verify the Karabiner-Elements dependency" >&2
+    exit 1
+  fi
+
+  if ! [ -d "/Applications/Karabiner-Elements.app" ] && ! brew list --cask karabiner-elements >/dev/null 2>&1; then
+    echo "Karabiner-Elements is not installed; install it with: brew install --cask karabiner-elements" >&2
+    exit 1
+  fi
+
+  if ! KANATA_BINARY="$(resolve_kanata_binary)"; then
+    echo "kanata is not installed; install it with Homebrew first" >&2
+    exit 1
+  fi
+
+  if [ ! -x "$KANATA_BINARY" ]; then
+    echo "kanata binary is not executable: $KANATA_BINARY" >&2
+    exit 1
+  fi
+
+  "$KANATA_BINARY" --check --cfg "$HOME/.config/kanata/kanata.kbd" >/dev/null
+}
+
+install_launchdaemon() {
+  ensure_sudo
+  validate_inputs
+
+  echo "Installing $PLIST_TARGET"
+  sudo install -o root -g wheel -m 0644 "$PLIST_SOURCE" "$PLIST_TARGET"
+
+  echo "Stopping any existing homebrew.mxcl.kanata LaunchAgent"
+  launchctl unload "$HOME/Library/LaunchAgents/homebrew.mxcl.kanata.plist" 2>/dev/null || true
+  launchctl bootout gui/"$(id -u)"/homebrew.mxcl.kanata 2>/dev/null || true
+
+  echo "Bootstrapping $LABEL"
+  sudo launchctl bootout system/"$LABEL" 2>/dev/null || true
+  sudo launchctl bootstrap system "$PLIST_TARGET"
+  sudo launchctl print system/"$LABEL" >/dev/null
+
+  echo "Kanata LaunchDaemon installed and bootstrapped"
+  echo "Check status with: launchctl print system/$LABEL"
+  echo "If remapping does not work, verify that Karabiner-Elements is installed and fully available"
+}
+
+mode="check"
+case "${1:-}" in
+  --check)
+    mode="check"
+    ;;
+  --install)
+    mode="install"
+    ;;
+  "")
+    mode="check"
+    ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac
+
+if [ "$mode" = "check" ]; then
+  validate_inputs
+  echo "Kanata LaunchDaemon plist and config look valid"
+  echo "Run this script with --install to install it to /Library/LaunchDaemons"
+  exit 0
+fi
+
+install_launchdaemon
