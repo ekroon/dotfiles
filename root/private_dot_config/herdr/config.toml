@@ -1,0 +1,10 @@
+onboarding = false
+
+[theme]
+name = "terminal"
+
+[ui.toast]
+delivery = "herdr"
+
+[keys]
+prefix = "ctrl+space"
