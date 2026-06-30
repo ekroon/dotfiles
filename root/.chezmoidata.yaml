@@ -66,11 +66,6 @@ mise_tools:
   - name: direnv
     filters:
       environment: [codespace, devcontainer]
-  - name: "github:ekroon/focal-builds[matching=neovim]"
-    filters:
-      os: [linux]
-      environment: [codespace, devcontainer]
-      distro_codename: [focal]
   - name: "github:neovim/neovim"
     version: latest
     asset_pattern: "nvim-linux-x86_64.appimage"
