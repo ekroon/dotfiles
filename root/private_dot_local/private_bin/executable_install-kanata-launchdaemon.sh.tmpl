@@ -11,6 +11,7 @@ PLIST_SOURCE="{{ .chezmoi.homeDir }}/.config/kanata/com.erwin.kanata.plist"
 PLIST_TARGET="/Library/LaunchDaemons/com.erwin.kanata.plist"
 LABEL="com.erwin.kanata"
 LOG_DIR="{{ .chezmoi.homeDir }}/.local/log"
+KARABINER_AGENTS="/Library/Application Support/org.pqrs/Karabiner-Elements/Karabiner-Elements Non-Privileged Agents v2.app/Contents/MacOS/Karabiner-Elements Non-Privileged Agents v2"
 
 usage() {
   cat <<'EOF'
@@ -82,6 +83,11 @@ validate_inputs() {
     exit 1
   fi
 
+  if [ ! -x "$KARABINER_AGENTS" ]; then
+    echo "Karabiner-Elements agent manager is not executable: $KARABINER_AGENTS" >&2
+    exit 1
+  fi
+
   if ! KANATA_BINARY="$(resolve_kanata_binary)"; then
     echo "kanata is not installed; install it with Homebrew first" >&2
     exit 1
@@ -102,9 +108,13 @@ install_launchdaemon() {
   echo "Installing $PLIST_TARGET"
   sudo install -o root -g wheel -m 0644 "$PLIST_SOURCE" "$PLIST_TARGET"
 
-  echo "Stopping any existing homebrew.mxcl.kanata LaunchAgent"
+  echo "Stopping any existing homebrew.mxcl.kanata service"
+  sudo launchctl bootout system/homebrew.mxcl.kanata 2>/dev/null || true
   launchctl unload "$HOME/Library/LaunchAgents/homebrew.mxcl.kanata.plist" 2>/dev/null || true
   launchctl bootout gui/"$(id -u)"/homebrew.mxcl.kanata 2>/dev/null || true
+
+  echo "Disabling Karabiner-Elements core agents that compete for keyboard access"
+  "$KARABINER_AGENTS" unregister-core-agents
 
   echo "Bootstrapping $LABEL"
   sudo launchctl bootout system/"$LABEL" 2>/dev/null || true

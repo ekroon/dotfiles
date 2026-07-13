@@ -1,0 +1,197 @@
+#!/bin/bash
+{{- if ne .chezmoi.os "darwin" }}
+echo "This helper is only supported on macOS" >&2
+exit 0
+{{- else }}
+set -euo pipefail
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+LABEL="com.erwin.kanata"
+INSTALLER="{{ .chezmoi.homeDir }}/.local/bin/install-kanata-launchdaemon.sh"
+KANATA_BINARY=""
+ISSUE_URL="https://github.com/jtroo/kanata/issues/2105"
+
+usage() {
+  cat <<'EOF'
+Usage: upgrade-kanata.sh [--status|--upgrade]
+
+  --status    Show installed versions, pin state, and daemon state (default).
+  --upgrade   Guide a coordinated Kanata and Karabiner-Elements upgrade.
+
+Only use --upgrade after Kanata release notes confirm support for the
+Karabiner VirtualHID driver installed by the target Karabiner-Elements release.
+EOF
+}
+
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Required command is unavailable: $1" >&2
+    exit 1
+  fi
+}
+
+kanata_version() {
+  kanata --version 2>/dev/null | head -n 1
+}
+
+karabiner_version() {
+  local version_file="/Library/Application Support/org.pqrs/Karabiner-Elements/version"
+  if [ -f "$version_file" ]; then
+    cat "$version_file"
+  else
+    echo "not installed"
+  fi
+}
+
+driver_version() {
+  local info="/Library/Application Support/org.pqrs/Karabiner-DriverKit-VirtualHIDDevice/Applications/Karabiner-VirtualHIDDevice-Daemon.app/Contents/Info"
+  defaults read "$info" CFBundleShortVersionString 2>/dev/null || echo "unknown"
+}
+
+is_pinned() {
+  brew list --pinned | grep -qx kanata
+}
+
+daemon_state() {
+  launchctl print system/"$LABEL" 2>/dev/null |
+    awk -F' = ' '/^[[:space:]]*state =/ { print $2; exit }' || true
+}
+
+show_status() {
+  local pin_state="not pinned"
+  local state
+
+  if is_pinned; then
+    pin_state="pinned"
+  fi
+  state="$(daemon_state)"
+  if [ -z "$state" ]; then
+    state="not loaded"
+  fi
+
+  echo "Kanata:             $(kanata_version) ($pin_state)"
+  echo "Karabiner-Elements: $(karabiner_version)"
+  echo "VirtualHID driver:  $(driver_version)"
+  echo "Managed daemon:     $state"
+  echo "Permission binary:  $KANATA_BINARY"
+  echo "Compatibility issue: $ISSUE_URL"
+
+  echo ""
+  echo "Available Homebrew upgrades:"
+  brew outdated --formula kanata || true
+  brew outdated --cask --greedy karabiner-elements || true
+}
+
+repair_homebrew_ownership() {
+  local brew_group
+  local brew_prefix
+  local kanata_prefix
+  local link
+
+  brew_prefix="$(brew --prefix)"
+  brew_group="$(stat -f '%Sg' "$brew_prefix")"
+  kanata_prefix="$(brew --prefix kanata)"
+
+  echo "Repairing Homebrew ownership left by the former root service"
+  sudo chown -R "$(id -un):$brew_group" "$kanata_prefix"
+  for link in "$brew_prefix/opt/kanata" "$brew_prefix/var/homebrew/linked/kanata"; do
+    if [ -L "$link" ]; then
+      sudo chown -h "$(id -un):$brew_group" "$link"
+    fi
+  done
+}
+
+open_permission_pane() {
+  local pane="$1"
+  local name="$2"
+
+  open "x-apple.systempreferences:com.apple.preference.security?$pane"
+  echo ""
+  echo "In $name:"
+  echo "  1. Remove every existing Kanata entry."
+  echo "  2. Add $KANATA_BINARY using + (Cmd+Shift+G in the file picker)."
+  echo "  3. Enable the new entry."
+  read -r -p "Press Enter after $name is updated..."
+}
+
+upgrade() {
+  local repin=false
+
+  if [ ! -t 0 ]; then
+    echo "--upgrade requires an interactive terminal" >&2
+    exit 1
+  fi
+  if [ ! -x "$INSTALLER" ]; then
+    echo "Expected executable installer at $INSTALLER" >&2
+    exit 1
+  fi
+
+  show_status
+  echo ""
+  echo "This upgrades both Kanata and Karabiner-Elements."
+  echo "Proceed only when Kanata release notes explicitly support the new VirtualHID driver."
+  read -r -p "Type 'upgrade' to continue: " confirmation
+  if [ "$confirmation" != "upgrade" ]; then
+    echo "Upgrade cancelled"
+    exit 0
+  fi
+
+  repin_on_exit() {
+    if [ "$repin" = true ] && ! is_pinned; then
+      echo "Re-pinning Kanata"
+      brew pin kanata
+    fi
+  }
+  trap repin_on_exit EXIT
+
+  sudo launchctl bootout system/"$LABEL" 2>/dev/null || true
+  sudo launchctl bootout system/homebrew.mxcl.kanata 2>/dev/null || true
+  repair_homebrew_ownership
+
+  if is_pinned; then
+    brew unpin kanata
+  fi
+  repin=true
+
+  brew upgrade kanata
+  brew upgrade --cask --greedy karabiner-elements
+
+  open_permission_pane "Privacy_ListenEvent" "Input Monitoring"
+  open_permission_pane "Privacy_Accessibility" "Accessibility"
+
+  "$INSTALLER" --install
+  sleep 4
+
+  if [ "$(daemon_state)" != "running" ]; then
+    echo "Kanata did not remain running. Recent log output:" >&2
+    tail -n 40 "{{ .chezmoi.homeDir }}/.local/log/kanata.log" >&2
+    exit 1
+  fi
+
+  brew pin kanata
+  repin=false
+  echo "Kanata upgrade complete and pinned"
+}
+
+require_command brew
+require_command kanata
+require_command launchctl
+KANATA_BINARY="$(brew --prefix)/opt/kanata/bin/kanata"
+
+case "${1:---status}" in
+  --status)
+    show_status
+    ;;
+  --upgrade)
+    upgrade
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac
+{{- end }}
