@@ -1,0 +1,32 @@
+#!/bin/bash
+set -e
+
+private_pattern="github.com/github/*"
+
+if command -v go >/dev/null 2>&1; then
+  current_goprivate="$(go env GOPRIVATE)"
+  pattern_found=false
+
+  IFS=',' read -r -a goprivate_patterns <<< "${current_goprivate}"
+  for pattern in "${goprivate_patterns[@]}"; do
+    if [ "${pattern}" = "${private_pattern}" ]; then
+      pattern_found=true
+      break
+    fi
+  done
+
+  if [ "${pattern_found}" = false ]; then
+    if [ -n "${current_goprivate}" ]; then
+      updated_goprivate="${current_goprivate},${private_pattern}"
+    else
+      updated_goprivate="${private_pattern}"
+    fi
+
+    echo "Adding ${private_pattern} to GOPRIVATE..."
+    go env -w "GOPRIVATE=${updated_goprivate}"
+  else
+    echo "GOPRIVATE already includes ${private_pattern}"
+  fi
+else
+  echo "Go not available; skipping GOPRIVATE configuration"
+fi
