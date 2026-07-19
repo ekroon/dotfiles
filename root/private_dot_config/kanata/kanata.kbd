@@ -81,6 +81,13 @@
   rcmdhyper (multi rmet (layer-while-held hyper) reverse-release-order)
   ;; Preserve normal F1-F12 by default; hold Globe/Fn for macOS special keys.
   fnspc (multi fn (layer-while-held fnspecial) reverse-release-order)
+  ergonomic (multi (layer-switch base) (push-msg "kanata-profile:ergonomic"))
+  normal (multi (layer-switch normal) (push-msg "kanata-profile:normal"))
+  profile-toggle (switch
+    ((base-layer base)) @normal break
+    ((base-layer normal)) @ergonomic break
+    () _ break
+  )
 )
 
 (deflayer base
@@ -101,7 +108,7 @@
   brdn
   brup
   mctl
-  sls
+  @profile-toggle
   dtn
   dnd
   prev
@@ -202,12 +209,13 @@
   _
 )
 
-;; macOS special top-row behavior while Globe/Fn is held.
+;; macOS special top-row behavior while Globe/Fn is held. Fn+F4 switches
+;; between layouts (and replaces Spotlight); use it again to recover.
 (deflayer fnspecial
   brdn
   brup
   mctl
-  sls
+  @profile-toggle
   dtn
   dnd
   prev
@@ -219,7 +227,7 @@
   brdn
   brup
   mctl
-  sls
+  @profile-toggle
   dtn
   dnd
   prev
@@ -239,6 +247,44 @@
   _
   _
   _
+)
+
+(deflayer normal
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  @profile-toggle
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  _
+  @fnspc
 )
 
 (defchordsv2
