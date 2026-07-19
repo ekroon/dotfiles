@@ -16,6 +16,7 @@ homebrew_bundle:
 # Missing filters match every environment.
 mise_tools:
   - fzf
+  - lua
   - node
   - starship
   - usage
