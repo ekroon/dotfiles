@@ -7,32 +7,51 @@ local kanata = {
 local menu = hs.menubar.new()
 local socket
 local reconnectTimer
+local scheduleReconnect
 local connectionMonitor
 local connectionTimeout
 local connecting = false
+local activeProfile
 
 if not menu then
   error("Unable to create Kanata menu bar item")
 end
 
-local function setStatus(status)
-  menu:setTitle("⌨ " .. status)
+local function setStatus(icon)
+  menu:setTitle(icon)
 end
 
 local function setProfile(layer)
   if layer == "base" then
-    setStatus("Ergonomic")
+    activeProfile = layer
+    setStatus("🐇")
   elseif layer == "normal" then
-    setStatus("Normal")
+    activeProfile = layer
+    setStatus("🐢")
   end
 end
 
-local function scheduleReconnect()
+local function toggleProfile()
+  if not socket or not socket:connected() then
+    scheduleReconnect()
+    return
+  end
+
+  if activeProfile == "base" then
+    socket:write('{"ChangeLayer":{"new":"normal"}}\n')
+  elseif activeProfile == "normal" then
+    socket:write('{"ChangeLayer":{"new":"base"}}\n')
+  else
+    socket:write('{"RequestCurrentLayerName":{}}\n')
+  end
+end
+
+scheduleReconnect = function()
   if connecting or reconnectTimer or (socket and socket:connected()) then
     return
   end
 
-  setStatus("Offline")
+  setStatus("⚠️")
   reconnectTimer = hs.timer.doAfter(kanata.reconnectDelay, function()
     reconnectTimer = nil
     socket = nil
@@ -42,11 +61,13 @@ local function scheduleReconnect()
       local event = hs.json.decode(data)
       if event and event.CurrentLayerName then
         setProfile(event.CurrentLayerName.name)
+      elseif event and event.LayerChange then
+        setProfile(event.LayerChange.new)
       elseif event and event.MessagePush then
         if event.MessagePush.message == "kanata-profile:ergonomic" then
-          setStatus("Ergonomic")
+          setProfile("base")
         elseif event.MessagePush.message == "kanata-profile:normal" then
-          setStatus("Normal")
+          setProfile("normal")
         end
       end
 
@@ -80,12 +101,7 @@ local function scheduleReconnect()
   end)
 end
 
-menu:setMenu({
-  {
-    title = "Kanata profile status",
-    disabled = true,
-  },
-})
+menu:setClickCallback(toggleProfile)
 
 connectionMonitor = hs.timer.doEvery(kanata.reconnectDelay, function()
   if not socket or not socket:connected() then
