@@ -1,112 +1,68 @@
-local kanata = {
-  host = "127.0.0.1",
-  port = 58230,
-  reconnectDelay = 2,
+local ipc = require("hs.ipc")
+local fs = require("hs.fs")
+local MEH = { "ctrl", "alt", "shift" }
+
+local function ipcCliInstallPrefix()
+  if fs.attributes("/opt/homebrew/bin", "mode") == "directory" then
+    return "/opt/homebrew"
+  end
+  return "/usr/local"
+end
+
+local ipcCliPrefix = ipcCliInstallPrefix()
+if ipc.cliStatus(ipcCliPrefix, true) ~= true then
+  ipc.cliInstall(ipcCliPrefix, true)
+end
+
+require("kanata").setup()
+
+hs.loadSpoon("AppWindowCycler")
+local AppWindowCycler = spoon.AppWindowCycler
+
+local edgeCycler = AppWindowCycler:new({
+  appNames = { "Microsoft Edge", "Google Chrome", "Firefox" },
+  launchWhenClosed = false,
+})
+edgeCycler:bindHotkey(MEH, "F1")
+
+local devCycler = AppWindowCycler:new({
+  appNames = { "GitHub", "Code - Insiders", "Code" },
+  launchWhenClosed = false,
+})
+devCycler:bindHotkey(MEH, "F2")
+
+local slackCycler = AppWindowCycler:new({
+  appNames = { "Slack" },
+  launchWhenClosed = true,
+})
+slackCycler:bindHotkey(MEH, "F3")
+
+local terminalCycler = AppWindowCycler:new({
+  appNames = { "Cmux", "Ghostty" },
+  launchWhenClosed = false,
+})
+terminalCycler:bindHotkey(MEH, "F4")
+
+local calendarCycler = AppWindowCycler:new({
+  appNames = { "Microsoft Teams", "Microsoft Outlook", "Reclaim" },
+  launchWhenClosed = true,
+})
+calendarCycler:bindHotkey(MEH, "F5")
+
+hs.windowCyclers = {
+  edge = edgeCycler,
+  dev = devCycler,
+  slack = slackCycler,
+  terminal = terminalCycler,
+  calendar = calendarCycler,
 }
 
-local menu = hs.menubar.new()
-local socket
-local reconnectTimer
-local scheduleReconnect
-local connectionMonitor
-local connectionTimeout
-local connecting = false
-local activeProfile
-
-if not menu then
-  error("Unable to create Kanata menu bar item")
-end
-
-local function setStatus(icon)
-  menu:setTitle(icon)
-end
-
-local function setProfile(layer)
-  if layer == "base" then
-    activeProfile = layer
-    setStatus("🐇")
-  elseif layer == "normal" then
-    activeProfile = layer
-    setStatus("🐢")
-  end
-end
-
-local function toggleProfile()
-  if not socket or not socket:connected() then
-    scheduleReconnect()
-    return
+function hs.cycleWindowGroup(name)
+  local cycler = hs.windowCyclers[name]
+  if not cycler then
+    return false, "Unknown window group: " .. tostring(name)
   end
 
-  if activeProfile == "base" then
-    socket:write('{"ChangeLayer":{"new":"normal"}}\n')
-  elseif activeProfile == "normal" then
-    socket:write('{"ChangeLayer":{"new":"base"}}\n')
-  else
-    socket:write('{"RequestCurrentLayerName":{}}\n')
-  end
+  cycler:cycle()
+  return true, "Cycled window group: " .. name
 end
-
-scheduleReconnect = function()
-  if connecting or reconnectTimer or (socket and socket:connected()) then
-    return
-  end
-
-  setStatus("⚠️")
-  reconnectTimer = hs.timer.doAfter(kanata.reconnectDelay, function()
-    reconnectTimer = nil
-    socket = nil
-
-    local client
-    client = hs.socket.new(function(data)
-      local event = hs.json.decode(data)
-      if event and event.CurrentLayerName then
-        setProfile(event.CurrentLayerName.name)
-      elseif event and event.LayerChange then
-        setProfile(event.LayerChange.new)
-      elseif event and event.MessagePush then
-        if event.MessagePush.message == "kanata-profile:ergonomic" then
-          setProfile("base")
-        elseif event.MessagePush.message == "kanata-profile:normal" then
-          setProfile("normal")
-        end
-      end
-
-      client:read("\n")
-    end)
-
-    connecting = true
-    socket = client
-    connectionTimeout = hs.timer.doAfter(5, function()
-      if connecting then
-        connecting = false
-        socket = nil
-        client:disconnect()
-        scheduleReconnect()
-      end
-    end)
-
-    if not client:connect(kanata.host, kanata.port, function()
-      connecting = false
-      connectionTimeout:stop()
-      connectionTimeout = nil
-      client:write('{"RequestCurrentLayerName":{}}\n')
-      client:read("\n")
-    end) then
-      connecting = false
-      connectionTimeout:stop()
-      connectionTimeout = nil
-      socket = nil
-      scheduleReconnect()
-    end
-  end)
-end
-
-menu:setClickCallback(toggleProfile)
-
-connectionMonitor = hs.timer.doEvery(kanata.reconnectDelay, function()
-  if not socket or not socket:connected() then
-    scheduleReconnect()
-  end
-end)
-
-scheduleReconnect()

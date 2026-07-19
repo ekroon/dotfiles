@@ -7,6 +7,7 @@ homebrew_bundle:
     - neovim
     - terminal-notifier
   casks:
+    - hammerspoon
     - karabiner-elements
   mas_apps: []
 
