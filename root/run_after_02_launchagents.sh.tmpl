@@ -59,8 +59,23 @@ else
 fi
 
 echo ""
-echo "Kanata LaunchDaemon installer is available at ${HOME}/.local/bin/install-kanata-launchdaemon.sh"
-echo "Run it with --install once to bootstrap /Library/LaunchDaemons/com.erwin.kanata.plist"
+KANATA_INSTALLER="${HOME}/.local/bin/install-kanata-launchdaemon.sh"
+
+if launchctl print system/com.erwin.kanata >/dev/null 2>&1; then
+  echo "✓ Kanata LaunchDaemon is installed"
+else
+  echo "╔═══════════════════════════════════════════════════════════╗" >&2
+  echo "║  ⚠️  Kanata LaunchDaemon is NOT installed.                ║" >&2
+  echo "║  Run: ${KANATA_INSTALLER} --install" >&2
+  echo "╚═══════════════════════════════════════════════════════════╝" >&2
+fi
+
+if launchctl print system/homebrew.mxcl.kanata >/dev/null 2>&1; then
+  echo "╔═══════════════════════════════════════════════════════════╗" >&2
+  echo "║  ⚠️  Legacy Homebrew Kanata daemon is still running.      ║" >&2
+  echo "║  Run: ${KANATA_INSTALLER} --install to remove it.         ║" >&2
+  echo "╚═══════════════════════════════════════════════════════════╝" >&2
+fi
 
 echo "LaunchAgent setup complete"
 {{ end -}}
