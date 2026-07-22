@@ -5,7 +5,9 @@ crabbox openclaw/crabbox main a47e886dbff746683931b5d84f165fa63aee662c 2026-06-0
 create-pr ekroon/copilot-catalog main de8c2ae81fa45d6465ad699d91345a9a7816b599 2026-06-01T09:09:10Z pin skill
 find-skills vercel-labs/skills main be0dd25b4a8665894a56f45ef582cc02ca802c39 2026-06-15T21:03:52Z pin skill
 git-commit ekroon/tabctl main d83404a96cf76fa045eee506c1b8c30898338d0f 2026-06-18T16:15:56Z pin skill
+gh-stack github/gh-stack v0.0.8 38aba1b7106d274af317b20686ddc81d706cd00f 2026-07-22T12:41:43Z auto skill
 grill-me mattpocock/skills main 6eeb81b5fcfeeb5bd531dd47ab2f9f2bbea27461 2026-06-18T16:15:57Z pin skill
+grilling mattpocock/skills v1.1.0 d574778f94cf620fcc8ce741584093bc650a61d3 2026-07-16T12:49:35Z auto skill
 handoff mattpocock/skills main 6eeb81b5fcfeeb5bd531dd47ab2f9f2bbea27461 2026-06-18T16:15:58Z pin skill
 playwright-cli microsoft/playwright-cli main 9b118a1a737662fa118d591b5687340b86005d5c 2026-06-15T21:03:57Z pin skill
 pretty-mermaid imxv/Pretty-mermaid-skills main e33f086d3b5bcec9f28632e4bd9c348b02bb2278 2026-06-01T09:09:18Z pin skill
