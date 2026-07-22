@@ -55,7 +55,10 @@ lockfile_snapshot="$(mktemp)"
 cp "${lockfile}" "${lockfile_snapshot}"
 
 set +e
-rosie-skills --cwd "${HOME}" install -a copilot -a pi -y
+(
+  cd "${HOME}"
+  rosie-skills install -a copilot -a pi -y
+)
 rosie_status=$?
 set -e
 
