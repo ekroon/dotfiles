@@ -1,6 +1,7 @@
 local suites = {
   dofile("test/AppWindowCycler_test.lua"),
   dofile("test/kanata_test.lua"),
+  dofile("test/init_test.lua"),
 }
 
 local total = 0

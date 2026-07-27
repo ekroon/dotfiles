@@ -26,7 +26,7 @@ local edgeCycler = AppWindowCycler:new({
 edgeCycler:bindHotkey(MEH, "F1")
 
 local devCycler = AppWindowCycler:new({
-  appNames = { "GitHub", "Code - Insiders", "Code" },
+  appNames = { "GitHub", "Code - Insiders", "Code", "Ghostty" },
   launchWhenClosed = false,
 })
 devCycler:bindHotkey(MEH, "F2")
@@ -38,14 +38,14 @@ local slackCycler = AppWindowCycler:new({
 slackCycler:bindHotkey(MEH, "F3")
 
 local terminalCycler = AppWindowCycler:new({
-  appNames = { "Cmux", "Ghostty" },
-  launchWhenClosed = false,
+  appNames = { "Obsidian" },
+  launchWhenClosed = true,
 })
 terminalCycler:bindHotkey(MEH, "F4")
 
 local calendarCycler = AppWindowCycler:new({
   appNames = { "Microsoft Teams", "Microsoft Outlook", "Reclaim" },
-  launchWhenClosed = true,
+  launchWhenClosed = false,
 })
 calendarCycler:bindHotkey(MEH, "F5")
 
