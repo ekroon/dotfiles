@@ -10,6 +10,7 @@ Main subsystems:
 
 - `root/private_dot_config/mise/config.toml.tmpl` renders filtered mise tools from `root/.chezmoidata.yaml`.
 - `root/private_dot_config/homebrew/Brewfile.tmpl` renders the managed macOS Brewfile; `root/run_after_00_homebrew_bundle.sh.tmpl` enforces it during local Darwin applies.
+- `root/private_dot_hammerspoon` contains the Hammerspoon entry point, Kanata integration, the `AppWindowCycler` Spoon, and plain-Lua tests.
 - `root/private_dot_config/nvim` is a LazyVim config: `init.lua` only loads `config.lazy`, general config lives in `lua/config`, and plugin overrides/specs live in `lua/plugins`.
 - `run_once_after_*` and `run_after_*` templates handle one-time and recurring apply hooks such as `mise install`, tmux plugin setup, Codespaces setup, atuin login, Homebrew, and LaunchAgents.
 
@@ -56,6 +57,13 @@ chezmoi cat ~/.config/homebrew/Brewfile
 brew bundle check --file "$HOME/.config/homebrew/Brewfile" --no-upgrade
 ```
 
+For Hammerspoon changes:
+
+```bash
+(cd root/private_dot_hammerspoon && mise x lua -- lua test/run.lua)
+(cd root/private_dot_hammerspoon && mise x lua -- luac -p init.lua kanata.lua Spoons/AppWindowCycler.spoon/init.lua test/*.lua)
+```
+
 ## Codebase conventions
 
 - Chezmoi naming matters: `dot_*` maps to dotfiles, `private_*` enforces private permissions, `executable_*` marks executables, and `run_once_*` / `run_once_after_*` scripts run once during apply.
@@ -64,6 +72,10 @@ brew bundle check --file "$HOME/.config/homebrew/Brewfile" --no-upgrade
 - Mise tool filters in `root/.chezmoidata.yaml` are OR'd within a filter key and AND'd across keys. Environment detection is Codespaces first, then `DEVCONTAINER=true`, then local. Repository filters use `GITHUB_REPOSITORY`; distro filters use `MISE_DISTRO_CODENAME` or `/etc/os-release` on Linux.
 - Use `variants` in `mise_tools` when one logical tool needs different assets, bins, or filters per OS/environment. Prefer musl-matching `github:` tools for Codespaces/devcontainers when glibc compatibility is an issue.
 - Homebrew packages are declared in `root/.chezmoidata.yaml`; avoid editing `root/private_dot_config/homebrew/Brewfile.tmpl` just to add or remove packages.
+- Hammerspoon code uses the existing Spoon metatable style (`obj.__index = obj`, `obj:new(config)`, and colon methods). Prefer Hammerspoon APIs and timers over shelling out for app or window state.
+- Treat Hammerspoon APIs defensively: `hs.application.find()` may return nil, one app, or multiple apps; accessibility calls may fail depending on permissions; and cached window IDs must be checked against the current window list.
+- `hs.ipc.cliStatus(prefix, true)` may return the truthy string `"broken"`; compare it with `~= true` before repairing the CLI installation.
+- Preserve the `AppWindowCycler` provider item contract `{ id, label, focus, isCurrent? }` and keep `launchWhenClosed` compatible with normal cycling while it waits for a newly launched app window.
 - Neovim plugin files are lowercase with hyphens and return plugin spec lists. Prefer `opts` and `keys` blocks, disable plugins with `enabled = false`, and avoid hand-editing `root/private_dot_config/nvim/lazy-lock.json`.
 - Lua is formatted by Stylua with 2 spaces and 120 columns; prefer double-quoted strings and trailing commas in tables.
 - Bash scripts use `#!/bin/bash`, `set -e` where failure should abort, quoted variable expansions, and explicit precondition failures. Use `[ ... ]` in bash scripts and `[[ ... ]]` in zsh files.
