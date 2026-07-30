@@ -329,10 +329,25 @@ run_rosie_preserving_lockfile() {
   return "${status}"
 }
 
-if ! command -v rosie-skills >/dev/null 2>&1; then
+rosie_bin="$(command -v rosie-skills 2>/dev/null || true)"
+rosie_via_mise=0
+if [ -z "${rosie_bin}" ] &&
+  command -v mise >/dev/null 2>&1 &&
+  mise which rosie-skills >/dev/null 2>&1; then
+  rosie_via_mise=1
+fi
+if [ -z "${rosie_bin}" ] && [ "${rosie_via_mise}" -eq 0 ]; then
   echo "rosie-skills is not available; skipping skill install"
   exit 0
 fi
+
+run_rosie() {
+  if [ "${rosie_via_mise}" -eq 1 ]; then
+    mise exec -- rosie-skills "$@"
+  else
+    "${rosie_bin}" "$@"
+  fi
+}
 
 case "${profile}" in
   work | personal)
@@ -526,7 +541,7 @@ for index in "${!previous_skills[@]}"; do
 done
 
 echo "Installing common rosie-managed skills for GitHub Copilot and Pi..."
-if ! run_rosie_preserving_lockfile rosie-skills --cwd "${HOME}" install -a copilot -a pi -y --no-audit; then
+if ! run_rosie_preserving_lockfile run_rosie --cwd "${HOME}" install -a copilot -a pi -y --no-audit; then
   echo "Failed to install common rosie-managed skills" >&2
   exit 1
 fi
@@ -541,7 +556,7 @@ if [ "${profile}" = "work" ]; then
       legacy_restore_needed=1
       remove_legacy_splunk_topology
     fi
-    if ! run_rosie_preserving_lockfile rosie-skills --cwd "${HOME}" install "${skill_path}" "${skill_name}" -a copilot -a pi --no-lockfile -y --no-audit; then
+    if ! run_rosie_preserving_lockfile run_rosie --cwd "${HOME}" install "${skill_path}" "${skill_name}" -a copilot -a pi --no-lockfile -y --no-audit; then
       echo "Failed to link work skill: ${skill_path}" >&2
       exit 1
     fi
