@@ -39,6 +39,7 @@ local function loadConfig()
   function spoon.AppWindowCycler:new(config)
     local cycler = {
       appNames = config.appNames,
+      appAliases = config.appAliases,
       launchWhenClosed = config.launchWhenClosed,
     }
     function cycler:bindHotkey(_, key)
@@ -66,6 +67,7 @@ M.tests = {
       local cyclers = loadConfig()
 
       assertEqual(table.concat(cyclers.dev.appNames, ","), "GitHub,Code - Insiders,Code,Ghostty", "F2 apps")
+      assertEqual(cyclers.dev.appAliases.GitHub, "GitHub Copilot", "F2 GitHub window alias")
       assertEqual(cyclers.dev.launchWhenClosed, false, "F2 launch behavior")
       assertEqual(table.concat(cyclers.terminal.appNames, ","), "Obsidian", "F4 apps")
       assertEqual(cyclers.terminal.launchWhenClosed, true, "F4 launch behavior")

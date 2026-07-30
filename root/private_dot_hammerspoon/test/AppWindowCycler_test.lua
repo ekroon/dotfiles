@@ -34,6 +34,10 @@ local function setupHs()
     waitTimers = {},
     waitInterval = nil,
     waitPredicateCalls = 0,
+    windowFilterActive = false,
+    windowFilterGetCount = 0,
+    windowFilterNewCount = 0,
+    windowFilterRules = {},
     now = 0,
     minimized = {},
     unminimized = {},
@@ -45,6 +49,40 @@ local function setupHs()
     timer = {},
     hotkey = {},
   }
+  hs.window.filter = {}
+
+  hs.window.filter.new = function()
+    env.windowFilterNewCount = env.windowFilterNewCount + 1
+    local appNames = {}
+    local filter = {}
+
+    function filter:setAppFilter(appName, rules)
+      table.insert(appNames, appName)
+      env.windowFilterRules[appName] = rules
+      return self
+    end
+
+    function filter:keepActive()
+      env.windowFilterActive = true
+      return self
+    end
+
+    function filter:getWindows()
+      env.windowFilterGetCount = env.windowFilterGetCount + 1
+      local windows = {}
+      for _, appName in ipairs(appNames) do
+        local app = env.appsByName[appName]
+        if app ~= nil then
+          for _, win in ipairs(app:allWindows()) do
+            if win:isStandard() then table.insert(windows, win) end
+          end
+        end
+      end
+      return windows
+    end
+
+    return filter
+  end
 
   hs.application.watcher = {
     activated = 1,
@@ -220,7 +258,7 @@ end
 
 M.tests = {
   {
-    name = "cycles default windows with one collection per app",
+    name = "cycles default windows from a maintained window filter",
     run = function()
       local env, AppWindowCycler = loadCycler()
       local winA = makeWindow(env, 101)
@@ -229,18 +267,75 @@ M.tests = {
       setApp(env, "B", { winB })
 
       local cycler = AppWindowCycler:new({ appNames = { "A", "B" } })
+      assertTrue(env.windowFilterActive, "default cycler should keep its window filter active")
+      assertEqual(
+        env.windowFilterRules.A.allowRoles,
+        "AXStandardWindow",
+        "filter should only include standard windows"
+      )
       cycler:cycle()
 
       assertEqual(env.focusedId, 101, "first cycle should focus the first app window")
-      assertEqual(env.findCounts.A, 1, "A should be enumerated once on first cycle")
-      assertEqual(env.findCounts.B, 1, "B should be enumerated once on first cycle")
+      assertEqual(env.findCounts.A, nil, "A should not be searched directly")
+      assertEqual(env.findCounts.B, nil, "B should not be searched directly")
 
       env.focusedWindow = winA
       cycler:cycle()
 
       assertEqual(env.focusedId, 202, "second cycle should advance from focused window")
-      assertEqual(env.findCounts.A, 2, "A should be enumerated once per cycle")
-      assertEqual(env.findCounts.B, 2, "B should be enumerated once per cycle")
+      assertEqual(env.findCounts.A, nil, "A should still avoid direct searches")
+      assertEqual(env.findCounts.B, nil, "B should still avoid direct searches")
+      assertEqual(env.windowFilterGetCount, 2, "cycler should read the maintained window list once per cycle")
+      assertEqual(env.activatedAppName, nil, "window focus should not separately activate the app")
+    end,
+  },
+  {
+    name = "resolves configured aliases before maintaining windows",
+    run = function()
+      local env, AppWindowCycler = loadCycler()
+      local githubWin = makeWindow(env, 101)
+      local ghosttyWin = makeWindow(env, 202)
+      local githubApp = setApp(env, "GitHub Copilot", { githubWin })
+      setApp(env, "Ghostty", { ghosttyWin })
+
+      local cycler = AppWindowCycler:new({
+        appNames = { "GitHub", "Ghostty" },
+        appAliases = { GitHub = "GitHub Copilot" },
+      })
+
+      assertTrue(
+        env.windowFilterRules["GitHub Copilot"] ~= nil,
+        "filter should use the exact aliased application name"
+      )
+      assertEqual(env.windowFilterRules.GitHub, nil, "filter should not use the fuzzy launch name")
+
+      cycler:cycle()
+      assertEqual(env.focusedId, 101, "aliased app window should be included first")
+
+      env.focusedWindow = githubWin
+      cycler:cycle()
+      assertEqual(env.focusedId, 202, "cycling should advance from aliased app to the next app")
+
+      env.watcherCallback("GitHub Copilot", hs.application.watcher.activated, githubApp)
+      assertEqual(cycler._state.itemId, 101, "focus watcher should track the exact aliased app name")
+      assertEqual(env.findCounts.GitHub, nil, "alias resolution should not add direct app searches")
+    end,
+  },
+  {
+    name = "default cycle bypasses provider item closure creation",
+    run = function()
+      local env, AppWindowCycler = loadCycler()
+      local winA = makeWindow(env, 101)
+      setApp(env, "A", { winA })
+
+      local cycler = AppWindowCycler:new({ appNames = { "A" } })
+      cycler.defaultWindowItems = function()
+        error("default items should not be materialized in the hot cycle path")
+      end
+
+      cycler:cycle()
+
+      assertEqual(env.focusedId, 101, "default cycle should focus the collected window directly")
     end,
   },
   {
@@ -264,8 +359,9 @@ M.tests = {
 
       assertEqual(env.launchedAppName, "B", "missing app should be launched")
       assertEqual(env.focusedId, 202, "newly launched app window should be focused")
-      assertEqual(env.findCounts.A, 1, "present app should be enumerated once")
-      assertEqual(env.findCounts.B, 2, "missing app should be collected once and polled once")
+      assertEqual(env.findCounts.A, nil, "present app should come from the maintained filter")
+      assertEqual(env.findCounts.B, nil, "launch polling should use the maintained filter")
+      assertEqual(env.activatedAppName, nil, "launch focus should not separately activate the app")
       assertEqual(env.waitInterval, 0.2, "launch wait interval should be preserved")
     end,
   },
@@ -335,6 +431,7 @@ M.tests = {
       local cyclerB = AppWindowCycler:new({ appNames = { "B" } })
 
       assertTrue(env.watcherStarted, "focus watcher should start")
+      assertEqual(env.windowFilterNewCount, 1, "default cyclers should share one maintained window filter")
       env.watcherCallback("A", hs.application.watcher.activated, appA)
 
       assertEqual(cyclerA._state.itemId, 101, "matching cycler should remember focus")

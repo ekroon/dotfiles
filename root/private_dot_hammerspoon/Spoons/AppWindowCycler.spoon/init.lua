@@ -2,7 +2,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "AppWindowCycler"
-obj.version = "1.11"
+obj.version = "1.13"
 obj.author = "Copilot"
 
 local LAUNCH_WAIT_INTERVAL = 0.2
@@ -67,6 +67,28 @@ local focusWatcherStartScheduled = false
 local focusWatcherAllCyclers = {}
 local focusWatcherCyclersByAppName = {}
 local focusWatcherAppWatcher = nil
+local sharedWindowFilter = nil
+local sharedWindowFilterAppNames = {}
+local sharedWindowFilterActive = false
+
+local function maintainedWindowFilter(appNames)
+  if sharedWindowFilter == nil then
+    sharedWindowFilter = hs.window.filter.new(false)
+  end
+
+  for _, appName in ipairs(appNames) do
+    if not sharedWindowFilterAppNames[appName] then
+      sharedWindowFilter:setAppFilter(appName, { allowRoles = "AXStandardWindow" })
+      sharedWindowFilterAppNames[appName] = true
+    end
+  end
+
+  if not sharedWindowFilterActive then
+    sharedWindowFilter:keepActive()
+    sharedWindowFilterActive = true
+  end
+  return sharedWindowFilter
+end
 
 local function focusedWindowForApp(app, eventType)
   local win = app and app:focusedWindow() or nil
@@ -118,7 +140,7 @@ local function registerFocusWatcherCycler(cycler)
     return
   end
 
-  for _, appName in ipairs(cycler.appNames) do
+  for _, appName in ipairs(cycler.windowAppNames) do
     local appCyclers = focusWatcherCyclersByAppName[appName]
     if appCyclers == nil then
       appCyclers = {}
@@ -138,9 +160,23 @@ function obj:new(config)
 
   instance.appNames         = {}
   instance.appNameSet       = {}
+  instance.appNameOrder     = {}
+  instance.appAliases       = {}
+  instance.windowAppNames   = {}
+  instance.windowAppNameByAppName = {}
+  instance.appNameByWindowAppName = {}
+  -- Window filters and watcher events require exact app names; launch names may remain fuzzy.
+  local appAliases = config.appAliases or {}
   for i, v in ipairs(config.appNames or {}) do
+    local windowAppName = appAliases[v] or v
     instance.appNames[i] = v
     instance.appNameSet[v] = true
+    instance.appNameSet[windowAppName] = true
+    instance.appAliases[v] = windowAppName
+    instance.windowAppNames[i] = windowAppName
+    instance.windowAppNameByAppName[v] = windowAppName
+    instance.appNameByWindowAppName[windowAppName] = v
+    instance.appNameOrder[windowAppName] = i
   end
   instance.tracksAllFocusedWindows = (#instance.appNames == 0)
 
@@ -157,6 +193,10 @@ function obj:new(config)
     instance.providers = { config.itemProvider }  -- single-provider shorthand
   else
     instance.providers = {}
+  end
+
+  if #instance.providers == 0 or instance.launchWhenClosed then
+    instance.windowFilter = maintainedWindowFilter(instance.windowAppNames)
   end
 
   instance._state = { ids = {}, index = 0, itemId = nil, lastCycleAt = nil }
@@ -186,20 +226,49 @@ end
 function obj:collectWindows()
   local windows = {}
   local windowsByAppName = {}
+  for _, appName in ipairs(self.appNames) do
+    windowsByAppName[appName] = {}
+  end
+
+  if self.windowFilter ~= nil then
+    for _, win in ipairs(self.windowFilter:getWindows()) do
+      local app = win:application()
+      local windowAppName = app and app:name() or nil
+      local appName = windowAppName and self.appNameByWindowAppName[windowAppName] or nil
+      local appOrder = windowAppName and self.appNameOrder[windowAppName] or nil
+      local id = win:id()
+      if appOrder ~= nil and id ~= nil then
+        local entry = { appOrder = appOrder, id = id, app = app, win = win }
+        table.insert(windows, entry)
+        table.insert(windowsByAppName[appName], entry)
+      end
+    end
+
+    table.sort(windows, function(a, b)
+      return a.appOrder == b.appOrder and a.id < b.id or a.appOrder < b.appOrder
+    end)
+    for _, appWindows in pairs(windowsByAppName) do
+      table.sort(appWindows, function(a, b) return a.id < b.id end)
+    end
+    return windows, windowsByAppName
+  end
+
   for appOrder, appName in ipairs(self.appNames) do
     local appWindows = self:windowsForApp(appName)
     windowsByAppName[appName] = appWindows
-
     for _, entry in ipairs(appWindows) do
-      table.insert(windows, {
-        appOrder = appOrder,
-        id       = entry.id,
-        app      = entry.app,
-        win      = entry.win,
-      })
+      entry.appOrder = appOrder
+      table.insert(windows, entry)
     end
   end
   return windows, windowsByAppName
+end
+
+function obj:focusWindow(entry)
+  if self.includeMinimized and entry.win:isMinimized() then
+    entry.win:unminimize()
+  end
+  entry.win:focus()
 end
 
 -- Default provider: wraps collected windows into self-contained items.
@@ -213,11 +282,7 @@ function obj:defaultWindowItems(windows)
       id        = e.id,
       label     = "",
       focus     = function()
-        if self.includeMinimized and e.win:isMinimized() then
-          e.win:unminimize()
-        end
-        e.app:activate(true)
-        e.win:focus()
+        self:focusWindow(e)
       end,
     })
   end
@@ -306,7 +371,12 @@ function obj:launchAndFocus(appName)
   local wins = {}
   self._launchWaitTimer = hs.timer.waitUntil(
     function()
-      wins = self:windowsForApp(appName)
+      if self.windowFilter ~= nil and self.windowAppNameByAppName[appName] ~= nil then
+        local _, windowsByAppName = self:collectWindows()
+        wins = windowsByAppName[appName] or {}
+      else
+        wins = self:windowsForApp(appName)
+      end
       return #wins > 0
     end,
     function()
@@ -314,8 +384,7 @@ function obj:launchAndFocus(appName)
       self:cancelPendingLaunchWait()
       local firstWindow = wins[1]
       if firstWindow == nil then return end
-      firstWindow.app:activate(true)
-      firstWindow.win:focus()
+      self:focusWindow(firstWindow)
     end,
     LAUNCH_WAIT_INTERVAL
   )
@@ -330,29 +399,23 @@ end
 
 function obj:cycle()
   local collectedWindows = nil
+  local windowsByAppName = nil
 
-  if #self.providers == 0 then
-    local windowsByAppName = nil
+  if #self.providers == 0 or self.launchWhenClosed then
     collectedWindows, windowsByAppName = self:collectWindows()
+  end
 
-    if self.launchWhenClosed then
-      for _, appName in ipairs(self.appNames) do
-        if #(windowsByAppName[appName] or {}) == 0 then
-          self:launchAndFocus(appName)
-          return
-        end
-      end
-    end
-  elseif self.launchWhenClosed then
+  if self.launchWhenClosed then
     for _, appName in ipairs(self.appNames) do
-      if #self:windowsForApp(appName) == 0 then
+      if #(windowsByAppName[appName] or {}) == 0 then
         self:launchAndFocus(appName)
         return
       end
     end
   end
 
-  local items = self:collectItems(collectedWindows)
+  local usingDefaultProvider = (#self.providers == 0)
+  local items = usingDefaultProvider and collectedWindows or self:collectItems()
   if #items == 0 then return end
 
   self:refreshItemState(items)
@@ -387,7 +450,11 @@ function obj:cycle()
   self._state.itemId = items[idx].id
   self._state.lastCycleAt = now
   local item = items[idx]
-  item.focus()
+  if usingDefaultProvider then
+    self:focusWindow(item)
+  else
+    item.focus()
+  end
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
