@@ -1,3 +1,12 @@
+{{- $machine := get . "machine" | default dict -}}
+{{- $profile := get $machine "profile" | default "" -}}
+{{- if not $profile -}}
+{{-   fail "machine profile is missing; run `chezmoi update --init` to select work or personal" -}}
+{{- end -}}
+{{- if not (has $profile (list "work" "personal")) -}}
+{{-   fail (printf "unsupported machine profile %q; run `chezmoi update --init` to select work or personal" $profile) -}}
+{{- end -}}
+{{- $workCatalog := .agent_skills.work_catalog -}}
 [".oh-my-zsh"]
     type = "archive"
     url = "https://github.com/ohmyzsh/ohmyzsh/archive/master.tar.gz"
@@ -12,3 +21,14 @@
     type = "file"
     url = "https://github.com/wezterm/wezterm/raw/refs/heads/main/assets/shell-integration/wezterm.sh"
     refreshPeriod = "168h"
+{{ if eq $profile "work" -}}
+["{{ $workCatalog.checkout_path }}"]
+    type = "git-repo"
+    url = {{ $workCatalog.repository | quote }}
+    refreshPeriod = "168h"
+    ["{{ $workCatalog.checkout_path }}".clone]
+        args = [
+            "-c", "credential.helper=!gh auth git-credential",
+            "-c", "credential.interactive=never",
+        ]
+{{ end -}}

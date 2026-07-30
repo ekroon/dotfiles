@@ -1,70 +1,566 @@
+{{- $machine := get . "machine" | default dict -}}
+{{- $profile := get $machine "profile" | default "" -}}
+{{- if not $profile -}}
+{{-   fail "machine profile is missing; run `chezmoi update --init` to select work or personal" -}}
+{{- end -}}
+{{- if not (has $profile (list "work" "personal")) -}}
+{{-   fail (printf "unsupported machine profile %q; run `chezmoi update --init` to select work or personal" $profile) -}}
+{{- end -}}
+{{- $workCatalog := .agent_skills.work_catalog -}}
 #!/bin/bash
 set -e
+
+profile={{ $profile | quote }}
+work_checkout="${HOME}/{{ $workCatalog.checkout_path }}"
+work_catalog="${work_checkout}/{{ $workCatalog.catalog_path }}"
+lockfile="${HOME}/.agents/rosie.lock"
+state_dir="${HOME}/.local/state/dotfiles-agent-skills"
+state_file="${state_dir}/work-skills"
+lockfile_snapshot=""
+state_tmp=""
+legacy_migration_detected=0
+legacy_restore_needed=0
+legacy_migration_complete=0
+legacy_replacement_target=""
+legacy_skill_name="splunk-log-analysis"
+legacy_canonical_link="${HOME}/.agents/skills/${legacy_skill_name}"
+legacy_pi_link="${HOME}/.pi/skills/${legacy_skill_name}"
+legacy_pi_agent_link="${HOME}/.pi/agent/skills/${legacy_skill_name}"
+legacy_source=""
+legacy_pi_agent_included=0
+legacy_canonical_removed=0
+legacy_pi_removed=0
+legacy_pi_agent_removed=0
+legacy_canonical_raw=""
+legacy_pi_raw=""
+legacy_pi_agent_raw=""
+
+cleanup() {
+  local status=$?
+
+  if [ "${legacy_restore_needed}" -eq 1 ] && [ "${legacy_migration_complete}" -eq 0 ]; then
+    if ! restore_legacy_splunk_links; then
+      echo "Failed to restore legacy work skill links: ${legacy_skill_name}" >&2
+      status=1
+    fi
+  fi
+  if [ -n "${lockfile_snapshot}" ]; then
+    if ! cmp -s "${lockfile_snapshot}" "${lockfile}"; then
+      if ! cp "${lockfile_snapshot}" "${lockfile}"; then
+        echo "Failed to restore Rosie lockfile: ${lockfile}" >&2
+        if [ "${status}" -eq 0 ]; then
+          status=1
+        fi
+      else
+        rm -f -- "${lockfile_snapshot}"
+      fi
+    else
+      rm -f -- "${lockfile_snapshot}"
+    fi
+  fi
+  if [ -n "${state_tmp}" ]; then
+    rm -f -- "${state_tmp}"
+  fi
+  return "${status}"
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+normalize_absolute_path() {
+  local path="$1"
+  local component
+  local -a components
+  local -a normalized
+
+  IFS="/" read -r -a components <<< "${path}"
+  normalized=()
+  for component in "${components[@]}"; do
+    case "${component}" in
+      "" | ".")
+        ;;
+      "..")
+        if [ "${#normalized[@]}" -gt 0 ]; then
+          unset "normalized[${#normalized[@]}-1]"
+        fi
+        ;;
+      *)
+        normalized[${#normalized[@]}]="${component}"
+        ;;
+    esac
+  done
+
+  if [ "${#normalized[@]}" -eq 0 ]; then
+    printf '/\n'
+  else
+    local IFS="/"
+    printf '/%s\n' "${normalized[*]}"
+  fi
+}
+
+legacy_source="$(normalize_absolute_path "${HOME}/.cache/rosie/private/github-agent-skills/splunk-log-analysis-skill")"
+
+absolute_link_target() {
+  local link_path="$1"
+  local target
+
+  target="$(readlink "${link_path}")" || return 1
+  case "${target}" in
+    /*)
+      ;;
+    *)
+      target="$(dirname "${link_path}")/${target}"
+      ;;
+  esac
+  normalize_absolute_path "${target}"
+}
+
+resolve_directory() {
+  [ -d "$1" ] || return 1
+  (
+    cd "$1"
+    pwd -P
+  )
+}
+
+valid_skill_name() {
+  case "$1" in
+    "" | "." | ".." | */* | *$'\t'* | *'
+'*)
+      return 1
+      ;;
+  esac
+}
+
+pi_link_points_to_canonical() {
+  local pi_link="$1"
+  local canonical_link="$2"
+  local pi_target
+  local canonical_normalized
+
+  [ -L "${pi_link}" ] || return 1
+  pi_target="$(absolute_link_target "${pi_link}")" || return 1
+  canonical_normalized="$(normalize_absolute_path "${canonical_link}")"
+  [ "${pi_target}" = "${canonical_normalized}" ]
+}
+
+link_points_to_target() {
+  local link_path="$1"
+  local expected_target="$2"
+  local actual_target
+
+  [ -L "${link_path}" ] || return 1
+  actual_target="$(absolute_link_target "${link_path}")" || return 1
+  [ "${actual_target}" = "${expected_target}" ]
+}
+
+record_legacy_splunk_topology() {
+  local canonical_matches=0
+  local pi_matches=0
+
+  if link_points_to_target "${legacy_canonical_link}" "${legacy_source}"; then
+    canonical_matches=1
+  fi
+  if pi_link_points_to_canonical "${legacy_pi_link}" "${legacy_canonical_link}"; then
+    pi_matches=1
+  fi
+
+  if [ "${canonical_matches}" -eq 1 ] && [ "${pi_matches}" -eq 1 ]; then
+    legacy_canonical_raw="$(readlink "${legacy_canonical_link}")"
+    legacy_pi_raw="$(readlink "${legacy_pi_link}")"
+    if link_points_to_target "${legacy_pi_agent_link}" "${legacy_source}"; then
+      legacy_pi_agent_raw="$(readlink "${legacy_pi_agent_link}")"
+      legacy_pi_agent_included=1
+    fi
+    legacy_migration_detected=1
+  elif [ "${canonical_matches}" -eq 1 ]; then
+    echo "Refusing to modify near-match legacy work skill links: ${legacy_skill_name}" >&2
+    return 1
+  fi
+}
+
+legacy_splunk_topology_is_unchanged() {
+  [ -L "${legacy_canonical_link}" ] &&
+    [ "$(readlink "${legacy_canonical_link}")" = "${legacy_canonical_raw}" ] &&
+    [ -L "${legacy_pi_link}" ] &&
+    [ "$(readlink "${legacy_pi_link}")" = "${legacy_pi_raw}" ] &&
+    {
+      [ "${legacy_pi_agent_included}" -eq 0 ] ||
+        {
+          [ -L "${legacy_pi_agent_link}" ] &&
+            [ "$(readlink "${legacy_pi_agent_link}")" = "${legacy_pi_agent_raw}" ]
+        }
+    }
+}
+
+remove_legacy_splunk_topology() {
+  if ! legacy_splunk_topology_is_unchanged; then
+    echo "Refusing to remove changed legacy work skill links: ${legacy_skill_name}" >&2
+    return 1
+  fi
+  if [ "${legacy_pi_agent_included}" -eq 1 ]; then
+    rm -f -- "${legacy_pi_agent_link}"
+    legacy_pi_agent_removed=1
+  fi
+  rm -f -- "${legacy_pi_link}"
+  legacy_pi_removed=1
+  rm -f -- "${legacy_canonical_link}"
+  legacy_canonical_removed=1
+}
+
+restore_legacy_link() {
+  local link_path="$1"
+  local raw_target="$2"
+  local link_kind="$3"
+  local safe_to_replace=0
+  local actual_target
+
+  if [ -L "${link_path}" ] && [ "$(readlink "${link_path}")" = "${raw_target}" ]; then
+    return 0
+  fi
+  if [ ! -e "${link_path}" ] && [ ! -L "${link_path}" ]; then
+    safe_to_replace=1
+  elif [ -L "${link_path}" ]; then
+    case "${link_kind}" in
+      canonical)
+        if [ -n "${legacy_replacement_target}" ]; then
+          if actual_target="$(resolve_directory "${link_path}")" &&
+            [ "${actual_target}" = "${legacy_replacement_target}" ]; then
+            safe_to_replace=1
+          elif link_points_to_target "${link_path}" "${legacy_replacement_target}"; then
+            safe_to_replace=1
+          fi
+        fi
+        ;;
+      pi)
+        if pi_link_points_to_canonical "${link_path}" "${legacy_canonical_link}"; then
+          safe_to_replace=1
+        fi
+        ;;
+    esac
+  fi
+
+  if [ "${safe_to_replace}" -ne 1 ]; then
+    echo "Refusing unsafe legacy link restoration: ${link_path}" >&2
+    return 1
+  fi
+  rm -f -- "${link_path}" || return 1
+  mkdir -p "$(dirname "${link_path}")" || return 1
+  ln -s "${raw_target}" "${link_path}" || return 1
+}
+
+restore_legacy_splunk_links() {
+  local status=0
+
+  if [ "${legacy_canonical_removed}" -eq 1 ]; then
+    restore_legacy_link "${legacy_canonical_link}" "${legacy_canonical_raw}" canonical || status=1
+  fi
+  if [ "${legacy_pi_removed}" -eq 1 ]; then
+    restore_legacy_link "${legacy_pi_link}" "${legacy_pi_raw}" pi || status=1
+  fi
+  if [ "${legacy_pi_agent_removed}" -eq 1 ]; then
+    restore_legacy_link "${legacy_pi_agent_link}" "${legacy_pi_agent_raw}" pi-agent || status=1
+  fi
+  return "${status}"
+}
+
+skill_is_current() {
+  local wanted="$1"
+  local current
+
+  for current in "${current_skills[@]}"; do
+    if [ "${current}" = "${wanted}" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+saved_target_for_skill() {
+  local wanted="$1"
+  local index
+
+  for index in "${!previous_skills[@]}"; do
+    if [ "${previous_skills[${index}]}" = "${wanted}" ]; then
+      printf '%s\n' "${previous_targets[${index}]}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+verify_work_skill_links() {
+  local skill_name="$1"
+  local expected_target="$2"
+  local canonical_link="${HOME}/.agents/skills/${skill_name}"
+  local pi_link="${HOME}/.pi/skills/${skill_name}"
+  local actual_target
+
+  if [ ! -L "${canonical_link}" ]; then
+    echo "Work skill canonical link is missing: ${canonical_link}" >&2
+    return 1
+  fi
+  actual_target="$(resolve_directory "${canonical_link}")" || {
+    echo "Work skill canonical link is unresolved: ${canonical_link}" >&2
+    return 1
+  }
+  if [ "${actual_target}" != "${expected_target}" ]; then
+    echo "Work skill canonical link has an unexpected target: ${canonical_link}" >&2
+    return 1
+  fi
+  if ! pi_link_points_to_canonical "${pi_link}" "${canonical_link}"; then
+    echo "Work skill Pi link does not point to its canonical link: ${pi_link}" >&2
+    return 1
+  fi
+}
+
+run_rosie_preserving_lockfile() {
+  local status
+
+  if "$@"; then
+    status=0
+  else
+    status=$?
+  fi
+  if ! cmp -s "${lockfile_snapshot}" "${lockfile}"; then
+    cp "${lockfile_snapshot}" "${lockfile}" || return 1
+  fi
+  return "${status}"
+}
 
 if ! command -v rosie-skills >/dev/null 2>&1; then
   echo "rosie-skills is not available; skipping skill install"
   exit 0
 fi
 
-{{- $private := .agent_skills.private_github_agent_skills }}
-managed_checkout_dir="${HOME}/{{ $private.managed_checkout_relative_path }}"
-ghq_repo_path=""
+case "${profile}" in
+  work | personal)
+    ;;
+  *)
+    echo "Unsupported machine profile: ${profile}" >&2
+    exit 1
+    ;;
+esac
 
-if command -v ghq >/dev/null 2>&1; then
-  if ghq get --update --silent github.com/github/agent-skills >/dev/null 2>&1; then
-    ghq_repo_path="$(ghq list --full-path --exact github/agent-skills | head -n 1)"
-  else
-    echo "ghq could not fetch private github/agent-skills; rosie will skip private skills if no checkout is available"
+if [ "${profile}" = "work" ]; then
+  if [ ! -d "${work_checkout}" ]; then
+    echo "Work skill checkout is missing: ${work_checkout}" >&2
+    exit 1
   fi
-else
-  echo "ghq is not available; rosie will skip private skills if no checkout is available"
-fi
-
-if [ -n "${ghq_repo_path}" ]; then
-  mkdir -p "$(dirname "${managed_checkout_dir}")"
-  if [ -L "${managed_checkout_dir}" ] || [ ! -e "${managed_checkout_dir}" ]; then
-    ln -sfn "${ghq_repo_path}" "${managed_checkout_dir}"
-  elif [ ! -d "${managed_checkout_dir}/.git" ]; then
-    echo "Managed private skills path exists but is not a git checkout; rosie will skip private skills"
+  if [ ! -d "${work_catalog}" ]; then
+    echo "Work skill catalog is missing: ${work_catalog}" >&2
+    exit 1
   fi
+  chmod 700 "${work_checkout}"
 fi
 
-if [ ! -d "${managed_checkout_dir}/.git" ]; then
-  echo "Private github/agent-skills checkout unavailable; rosie will skip private skills"
-fi
-
-if [ -d "${managed_checkout_dir}/.git" ]; then
-  if git -C "${managed_checkout_dir}" cat-file -e "{{ $private.ref }}^{commit}" 2>/dev/null || git -C "${managed_checkout_dir}" fetch --quiet origin; then
-    git -C "${managed_checkout_dir}" checkout --quiet "{{ $private.ref }}"
-    if [ ! -f "${managed_checkout_dir}/{{ $private.skill_path }}/SKILL.md" ]; then
-      echo "Private skill path missing in github/agent-skills checkout; rosie will skip private skills"
-    fi
-  else
-    echo "Could not fetch private github/agent-skills ref; rosie will skip private skills if the source is missing"
-  fi
-fi
-
-echo "Installing rosie-managed skills for GitHub Copilot and Pi..."
-lockfile="${HOME}/.agents/rosie.lock"
 if [ ! -f "${lockfile}" ]; then
   echo "Rosie lockfile is missing; skipping skill install"
   exit 0
 fi
 
-lockfile_snapshot="$(mktemp)"
+umask 077
+mkdir -p "${state_dir}"
+chmod 700 "${state_dir}"
+lockfile_snapshot="${state_dir}/rosie.lock.snapshot.$$"
 cp "${lockfile}" "${lockfile_snapshot}"
 
-set +e
-(
-  cd "${HOME}"
-  rosie-skills install -a copilot -a pi -y
-)
-rosie_status=$?
-set -e
+current_skills=()
+current_paths=()
+current_targets=()
 
-if ! cmp -s "${lockfile_snapshot}" "${lockfile}"; then
-  cp "${lockfile_snapshot}" "${lockfile}"
+if [ "${profile}" = "work" ]; then
+  shopt -s nullglob dotglob
+  for skill_path in "${work_catalog}"/*; do
+    if { [ -d "${skill_path}" ] || [ -L "${skill_path}" ]; } && [ -f "${skill_path}/SKILL.md" ]; then
+      skill_name="$(basename "${skill_path}")"
+      if ! valid_skill_name "${skill_name}"; then
+        echo "Invalid work skill name: ${skill_name}" >&2
+        exit 1
+      fi
+      resolved_source_target="$(resolve_directory "${skill_path}")" || {
+        echo "Cannot resolve work skill source: ${skill_path}" >&2
+        exit 1
+      }
+      current_skills[${#current_skills[@]}]="${skill_name}"
+      current_paths[${#current_paths[@]}]="${skill_path}"
+      current_targets[${#current_targets[@]}]="${resolved_source_target}"
+    fi
+  done
+  shopt -u nullglob dotglob
 fi
-rm -f "${lockfile_snapshot}"
 
-exit "${rosie_status}"
+previous_skills=()
+previous_targets=()
+if [ -f "${state_file}" ]; then
+  while IFS= read -r state_line || [ -n "${state_line}" ]; do
+    state_has_target=0
+    case "${state_line}" in
+      *$'\t'*)
+        state_has_target=1
+        skill_name="${state_line%%$'\t'*}"
+        saved_target="${state_line#*$'\t'}"
+        ;;
+      *)
+        skill_name="${state_line}"
+        saved_target=""
+        ;;
+    esac
+    if valid_skill_name "${skill_name}"; then
+      if [ "${state_has_target}" -eq 1 ] &&
+        { [ -z "${saved_target}" ] || [ "${saved_target#/}" = "${saved_target}" ] ||
+        [ "${saved_target#*$'\t'}" != "${saved_target}" ]; }; then
+        echo "Ignoring invalid saved target for work skill: ${skill_name}" >&2
+        saved_target=""
+      fi
+      duplicate_index=""
+      for index in "${!previous_skills[@]}"; do
+        if [ "${previous_skills[${index}]}" = "${skill_name}" ]; then
+          duplicate_index="${index}"
+          break
+        fi
+      done
+      if [ -n "${duplicate_index}" ]; then
+        echo "Ignoring duplicate work skill state entry: ${skill_name}" >&2
+        previous_targets[duplicate_index]=""
+      else
+        previous_skills[${#previous_skills[@]}]="${skill_name}"
+        previous_targets[${#previous_targets[@]}]="${saved_target}"
+      fi
+    else
+      echo "Ignoring invalid work skill state entry" >&2
+    fi
+  done < "${state_file}"
+fi
+
+record_legacy_splunk_topology
+
+if [ "${profile}" = "work" ]; then
+  for index in "${!current_skills[@]}"; do
+    skill_name="${current_skills[${index}]}"
+    resolved_source_target="${current_targets[${index}]}"
+    saved_target="$(saved_target_for_skill "${skill_name}" || true)"
+    legacy_preflight_owned=0
+    canonical_link="${HOME}/.agents/skills/${skill_name}"
+    if [ -e "${canonical_link}" ] || [ -L "${canonical_link}" ]; then
+      if [ ! -L "${canonical_link}" ]; then
+        echo "Refusing to replace existing non-symlink: ${canonical_link}" >&2
+        exit 1
+      fi
+      if ! existing_target="$(resolve_directory "${canonical_link}")"; then
+        if [ "${legacy_migration_detected}" -eq 1 ] &&
+          [ "${skill_name}" = "${legacy_skill_name}" ] &&
+          legacy_splunk_topology_is_unchanged; then
+          existing_target="$(absolute_link_target "${canonical_link}")" || {
+            echo "Refusing to replace unresolved symlink: ${canonical_link}" >&2
+            exit 1
+          }
+        else
+          echo "Refusing to replace unresolved symlink: ${canonical_link}" >&2
+          exit 1
+        fi
+      fi
+      if [ "${legacy_migration_detected}" -eq 1 ] &&
+        [ "${skill_name}" = "${legacy_skill_name}" ] &&
+        legacy_splunk_topology_is_unchanged; then
+        legacy_preflight_owned=1
+      fi
+      if [ "${existing_target}" != "${resolved_source_target}" ] &&
+        { [ -z "${saved_target}" ] || [ "${existing_target}" != "${saved_target}" ]; } &&
+        [ "${legacy_preflight_owned}" -ne 1 ]; then
+        echo "Refusing to replace existing unrelated symlink: ${canonical_link}" >&2
+        exit 1
+      fi
+    fi
+
+    pi_link="${HOME}/.pi/skills/${skill_name}"
+    if [ -e "${pi_link}" ] || [ -L "${pi_link}" ]; then
+      if [ ! -L "${pi_link}" ]; then
+        echo "Refusing to replace existing non-symlink: ${pi_link}" >&2
+        exit 1
+      fi
+      if ! pi_link_points_to_canonical "${pi_link}" "${canonical_link}"; then
+        echo "Refusing to replace existing unrelated symlink: ${pi_link}" >&2
+        exit 1
+      fi
+    fi
+
+    if [ "${skill_name}" = "${legacy_skill_name}" ]; then
+      legacy_replacement_target="${resolved_source_target}"
+    fi
+  done
+fi
+
+for index in "${!previous_skills[@]}"; do
+  skill_name="${previous_skills[${index}]}"
+  saved_target="${previous_targets[${index}]}"
+  if skill_is_current "${skill_name}"; then
+    continue
+  fi
+  if [ "${legacy_migration_detected}" -eq 1 ] && [ "${skill_name}" = "${legacy_skill_name}" ]; then
+    continue
+  fi
+
+  if [ -z "${saved_target}" ]; then
+    echo "Skipping stale cleanup for legacy name-only state: ${skill_name}" >&2
+    continue
+  fi
+
+  canonical_link="${HOME}/.agents/skills/${skill_name}"
+  if [ ! -L "${canonical_link}" ]; then
+    continue
+  fi
+  if ! existing_target="$(resolve_directory "${canonical_link}")"; then
+    existing_target="$(absolute_link_target "${canonical_link}")" || continue
+  fi
+  if [ "${existing_target}" != "${saved_target}" ]; then
+    continue
+  fi
+
+  pi_link="${HOME}/.pi/skills/${skill_name}"
+  if pi_link_points_to_canonical "${pi_link}" "${canonical_link}"; then
+    rm -f -- "${pi_link}"
+  fi
+  rm -f -- "${canonical_link}"
+done
+
+echo "Installing common rosie-managed skills for GitHub Copilot and Pi..."
+if ! run_rosie_preserving_lockfile rosie-skills --cwd "${HOME}" install -a copilot -a pi -y --no-audit; then
+  echo "Failed to install common rosie-managed skills" >&2
+  exit 1
+fi
+
+if [ "${profile}" = "work" ]; then
+  for index in "${!current_paths[@]}"; do
+    skill_path="${current_paths[${index}]}"
+    skill_name="${current_skills[${index}]}"
+    echo "Linking work skill: ${skill_name}"
+    if [ "${legacy_migration_detected}" -eq 1 ] && [ "${skill_name}" = "${legacy_skill_name}" ]; then
+      echo "Migrating legacy work skill links: ${skill_name}"
+      legacy_restore_needed=1
+      remove_legacy_splunk_topology
+    fi
+    if ! run_rosie_preserving_lockfile rosie-skills --cwd "${HOME}" install "${skill_path}" "${skill_name}" -a copilot -a pi --no-lockfile -y --no-audit; then
+      echo "Failed to link work skill: ${skill_path}" >&2
+      exit 1
+    fi
+    verify_work_skill_links "${skill_name}" "${current_targets[${index}]}"
+    if [ "${legacy_migration_detected}" -eq 1 ] && [ "${skill_name}" = "${legacy_skill_name}" ]; then
+      legacy_migration_complete=1
+      legacy_restore_needed=0
+    fi
+  done
+elif [ "${legacy_migration_detected}" -eq 1 ]; then
+  echo "Removing legacy work skill links from personal profile: ${legacy_skill_name}"
+  remove_legacy_splunk_topology
+fi
+
+state_tmp="${state_file}.tmp.$$"
+: > "${state_tmp}"
+for index in "${!current_skills[@]}"; do
+  printf '%s\t%s\n' "${current_skills[${index}]}" "${current_targets[${index}]}" >> "${state_tmp}"
+done
+chmod 600 "${state_tmp}"
+mv -f "${state_tmp}" "${state_file}"
+state_tmp=""
