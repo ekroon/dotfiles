@@ -38,6 +38,11 @@ if [ -z "${ATUIN_USERNAME}" ] || [ -z "${ATUIN_PASSWORD}" ] || [ -z "${ATUIN_KEY
   echo "ATUIN_USERNAME, ATUIN_PASSWORD and ATUIN_KEY must be set for atuin initialization"
 else
   echo "Initializing atuin"
-  atuin login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"
-  atuin sync
+  if atuin login -u "${ATUIN_USERNAME}" -p "${ATUIN_PASSWORD}" -k "${ATUIN_KEY}"; then
+    if ! atuin sync; then
+      echo "Atuin sync failed; continuing without initial history sync" >&2
+    fi
+  else
+    echo "Atuin login failed; skipping initial history sync" >&2
+  fi
 fi
