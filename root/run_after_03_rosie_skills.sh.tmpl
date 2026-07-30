@@ -58,6 +58,10 @@ cleanup() {
       rm -f -- "${lockfile_snapshot}"
     fi
   fi
+  if [ -f "${lockfile}" ] && ! chmod 600 "${lockfile}"; then
+    echo "Failed to set private permissions on Rosie lockfile: ${lockfile}" >&2
+    status=1
+  fi
   if [ -n "${state_tmp}" ]; then
     rm -f -- "${state_tmp}"
   fi
