@@ -17,7 +17,7 @@
 {{- else if $interactive -}}
 {{-   $profile = promptChoice "machine profile" (list "work" "personal") "work" -}}
 {{- else -}}
-{{-   fail "machine profile is not configured; run `chezmoi update --init` in a terminal, or set CHEZMOI_MACHINE_PROFILE for automation" -}}
+{{-   $profile = "personal" -}}
 {{- end -}}
 
 sourceDir = {{ .chezmoi.sourceDir | quote }}
