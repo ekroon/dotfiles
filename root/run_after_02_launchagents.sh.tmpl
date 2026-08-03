@@ -2,31 +2,29 @@
 #!/bin/bash
 set -e
 
-echo "Loading Obsidian backup LaunchAgents..."
+echo "Configuring Obsidian backup LaunchAgents..."
 
 # Unload existing agents if they're running
 launchctl unload "$HOME/Library/LaunchAgents/com.erwin.vault-backup.plist" 2>/dev/null || echo "Warning: Could not unload com.erwin.vault-backup (may not be loaded yet)"
 launchctl unload "$HOME/Library/LaunchAgents/com.erwin.vault-backup-remote.plist" 2>/dev/null || echo "Warning: Could not unload com.erwin.vault-backup-remote (may not be loaded yet)"
 launchctl unload "$HOME/Library/LaunchAgents/com.erwin.vault-backup-icloud.plist" 2>/dev/null || echo "Warning: Could not unload com.erwin.vault-backup-icloud (may not be loaded yet)"
 
-# Load the agents
-if launchctl load "$HOME/Library/LaunchAgents/com.erwin.vault-backup.plist"; then
-  echo "✓ Loaded com.erwin.vault-backup"
+{{ if eq .machine.profile "work" -}}
+VAULT_PATH="$HOME/develop/github.com/github/ekroon/obsidian"
+PASSWORD_FILE="$HOME/.config/restic/password"
+
+if [[ ! -d "$VAULT_PATH" ]]; then
+  echo "Warning: Work Obsidian vault not found at $VAULT_PATH; local backup remains disabled" >&2
+elif [[ ! -f "$PASSWORD_FILE" ]]; then
+  echo "Warning: Restic password file not found at $PASSWORD_FILE; local backup remains disabled" >&2
+elif launchctl load "$HOME/Library/LaunchAgents/com.erwin.vault-backup.plist"; then
+  echo "✓ Loaded local-only work Obsidian backup"
 else
   echo "Warning: Failed to load com.erwin.vault-backup" >&2
 fi
-
-if launchctl load "$HOME/Library/LaunchAgents/com.erwin.vault-backup-remote.plist"; then
-  echo "✓ Loaded com.erwin.vault-backup-remote"
-else
-  echo "Warning: Failed to load com.erwin.vault-backup-remote" >&2
-fi
-
-if launchctl load "$HOME/Library/LaunchAgents/com.erwin.vault-backup-icloud.plist"; then
-  echo "✓ Loaded com.erwin.vault-backup-icloud"
-else
-  echo "Warning: Failed to load com.erwin.vault-backup-icloud" >&2
-fi
+{{ else -}}
+echo "Obsidian backups are disabled on personal machines"
+{{ end }}
 
 # gh-not sync LaunchAgent
 echo ""

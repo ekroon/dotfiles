@@ -1,6 +1,6 @@
 # Obsidian Backup
 
-Automatic Obsidian vault backup using [restic](https://restic.net/) via macOS LaunchAgents.
+Work Obsidian vault backup using [restic](https://restic.net/). It runs only on machines with the `work` machine profile and reads the vault from `~/develop/github.com/github/ekroon/obsidian`.
 
 ## Table of contents
 
@@ -8,28 +8,20 @@ Automatic Obsidian vault backup using [restic](https://restic.net/) via macOS La
 - [Logs](#logs)
 - [Check status](#check-status)
 - [Local password configuration](#local-password-configuration)
-- [B2 configuration (optional)](#b2-configuration-optional)
-- [iCloud configuration (optional)](#icloud-configuration-optional)
 - [Manual backup operations](#manual-backup-operations)
 - [List and restore](#list-and-restore)
 
 ## Backup schedule
 
-- **Local backups**: Every hour (`~/.vault-backups`)
-- **Remote backups**: Every 4 hours to B2 (if configured)
-- **iCloud backups**: Every hour to iCloud Drive (`~/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian/restic`)
+- **Local backups**: Every hour on work Macs (`~/.vault-backups`)
+- **Remote backups**: Disabled
+- **iCloud backups**: Disabled
 
 ## Logs
 
 ```bash
 # Local backup log
 tail -f ~/.local/log/vault-backup.log
-
-# Remote backup log
-tail -f ~/.local/log/vault-backup-remote.log
-
-# iCloud backup log
-tail -f ~/.local/log/vault-backup-icloud.log
 ```
 
 A successful backup looks like:
@@ -46,13 +38,6 @@ processed 215 files, 16.216 MiB in 0:00
 snapshot abc12345 saved
 Pruning old local snapshots...
 ...
-Backup complete.
-```
-
-If B2 is not configured, the remote log will show:
-
-```
-Warning: B2 credentials file not found at /Users/erwin/.config/restic/b2-env, skipping remote backup
 Backup complete.
 ```
 
@@ -80,115 +65,27 @@ Initialize the local repository (first time only):
 restic -r ~/.vault-backups --password-file ~/.config/restic/password init
 ```
 
-This same password is used for local, B2, and iCloud repositories unless you explicitly add a secondary key (iCloud adds `restic-password` for recovery).
-
-## B2 configuration (optional)
-
-Remote backups are skipped unless you configure B2 credentials.
-
-### 1. Create B2 bucket
-
-1. Sign up at [backblaze.com/b2](https://www.backblaze.com/b2/cloud-storage.html)
-2. Create a bucket
-3. Create an Application Key with read/write access
-
-### 2. Configure credentials
-
-```bash
-cat > ~/.config/restic/b2-env << 'EOF'
-export B2_ACCOUNT_ID="your-key-id"
-export B2_ACCOUNT_KEY="your-key"
-export RESTIC_REPOSITORY_REMOTE="b2:your-bucket:restic"
-EOF
-
-chmod 600 ~/.config/restic/b2-env
-```
-
-### 3. Initialize repository
-
-```bash
-source ~/.config/restic/b2-env
-restic -r "$RESTIC_REPOSITORY_REMOTE" --password-file ~/.config/restic/password init
-```
-
-### 4. Test
-
-```bash
-~/.local/bin/backup-vault.sh --remote --tag test
-```
-
-## iCloud configuration (optional)
-
-iCloud backups store a restic repository in iCloud Drive and add a secondary key stored alongside it for password redundancy.
-
-### 1. Create iCloud folder
-
-```bash
-mkdir -p "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian"
-```
-
-### 2. Create iCloud password file
-
-```bash
-openssl rand -base64 48 > "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian/restic-password"
-chmod 600 "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian/restic-password"
-```
-
-### 3. Initialize repository and add iCloud key
-
-```bash
-ICLOUD_REPO="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian/restic"
-ICLOUD_PASSWORD_FILE="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian/restic-password"
-
-restic -r "$ICLOUD_REPO" --password-file ~/.config/restic/password init
-restic -r "$ICLOUD_REPO" --password-file ~/.config/restic/password key add --new-password-file "$ICLOUD_PASSWORD_FILE"
-```
-
-### 4. Test
-
-```bash
-~/.local/bin/backup-vault.sh --icloud --tag test
-```
+The remote and iCloud backup implementations remain in the script for possible future reuse, but the work-vault guard prevents using them.
 
 ## Manual backup operations
 
-Scope flags:
-- `--local`, `--remote`, `--icloud` select which repositories to operate on
-- If you omit all scope flags, local is assumed
-- Combine flags to run multiple (for example, `--local --remote`)
+The work vault supports local backups only. Omit the scope flag or use `--local`; `--remote` and `--icloud` are rejected.
 
 ```bash
 # Manual local backup
 ~/.local/bin/backup-vault.sh [--local] --tag manual
 
-# Manual iCloud backup
-~/.local/bin/backup-vault.sh --icloud --tag manual
-
-# Manual remote backup
-~/.local/bin/backup-vault.sh --remote --tag manual
-
-# Manual local + iCloud backup
-~/.local/bin/backup-vault.sh --local --icloud --tag manual
-
 # Check repository integrity and stats
 ~/.local/bin/backup-vault.sh --check --local
-~/.local/bin/backup-vault.sh --check --remote
-~/.local/bin/backup-vault.sh --check --icloud
-~/.local/bin/backup-vault.sh --check --local --remote
 
 # Run a command after backup completes
 ~/.local/bin/backup-vault.sh --tag manual -- copilot
-~/.local/bin/backup-vault.sh --remote -- ~/scripts/notify.sh
 ~/.local/bin/backup-vault.sh -- echo "Backup done"
 ```
 
 The `--check` flag verifies repository integrity and shows statistics:
 - Checks all snapshots, trees, and blobs for corruption
 - Shows file count and total size of latest snapshot
-- Use `--check --remote` to verify the B2 repository (add `--local` for both)
-- Use `--check --icloud` to verify the iCloud repository (add `--local` for both)
-
-iCloud backups use the local restic password for normal operations, and add a secondary key stored in iCloud (`restic-password`) for recovery.
 
 The `--` syntax runs any command after the backup finishes. Useful for:
 - Triggering notifications
@@ -201,42 +98,14 @@ The `--` syntax runs any command after the backup finishes. Useful for:
 # List local snapshots
 ~/.local/bin/backup-vault.sh --list --local
 
-# List both local and remote snapshots (if B2 configured)
-~/.local/bin/backup-vault.sh --list --local --remote
-
-# List iCloud snapshots
-~/.local/bin/backup-vault.sh --list --icloud
-
 # List snapshots using restic directly
 restic -r ~/.vault-backups --password-file ~/.config/restic/password snapshots
-
-# List iCloud snapshots using restic directly
-restic -r "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian/restic" --password-file ~/.config/restic/password snapshots
 
 # Restore latest snapshot
 restic -r ~/.vault-backups --password-file ~/.config/restic/password restore latest --target ~/restored-vault
 ```
 
 ## Troubleshooting
-
-### "operation not permitted" when running manually
-
-If you see this error when running `backup-vault.sh` from a terminal or from Obsidian:
-
-```
-error: openfile for readdirnames failed: open .../iCloud~md~obsidian/Documents/MainVault: operation not permitted
-```
-
-The Obsidian vault lives in an iCloud container (`~/Library/Mobile Documents/iCloud~md~obsidian/`) which macOS protects via TCC (Transparency, Consent, and Control). The app that spawns the backup process needs **Full Disk Access**.
-
-**Fix:**
-
-1. Open **System Settings → Privacy & Security → Full Disk Access**
-2. Click **+** and add your terminal app (e.g., `Ghostty.app`) and/or `Obsidian.app`
-3. Toggle them **on**
-4. Restart the app
-
-The script will show a macOS notification when this error is detected. Scheduled LaunchAgent backups are not affected (launchd has broad file access).
 
 ### Stale lock errors
 
@@ -245,9 +114,6 @@ If prune fails with "repository is already locked", a previous restic process wa
 ```bash
 # Clear stale locks on local repo
 restic -r ~/.vault-backups --password-file ~/.config/restic/password unlock
-
-# Clear stale locks on iCloud repo
-restic -r "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Obsidian/restic" --password-file ~/.config/restic/password unlock
 ```
 
 The script automatically clears stale locks before pruning and uses `--retry-lock 2m` to handle transient lock contention.

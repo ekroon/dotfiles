@@ -5,7 +5,8 @@ set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 # Configuration
-VAULT_PATH="{{ .chezmoi.homeDir }}/Library/Mobile Documents/iCloud~md~obsidian/Documents/MainVault"
+WORK_PROFILE={{ if eq .machine.profile "work" }}true{{ else }}false{{ end }}
+VAULT_PATH="$HOME/develop/github.com/github/ekroon/obsidian"
 LOCAL_REPO="$HOME/.vault-backups"
 PASSWORD_FILE="$HOME/.config/restic/password"
 LOG_DIR="$HOME/.local/log"
@@ -64,6 +65,16 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [[ "$WORK_PROFILE" != true ]]; then
+    echo "Obsidian backup is only configured for work machines" >&2
+    exit 1
+fi
+
+if [[ "$REMOTE" == true || "$ICLOUD" == true ]]; then
+    echo "Work vault backups only support the local repository" >&2
+    exit 1
+fi
 
 if [[ "$SCOPE_SET" == false ]]; then
     LOCAL=true
