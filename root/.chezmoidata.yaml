@@ -146,6 +146,7 @@ mise_tools:
       environment: [codespace]
       repo: ["github/*"]
   - name: "npm:@earendil-works/pi-coding-agent"
+  - name: "npm:@tobilu/qmd"
   - name: "github:ogulcancelik/herdr"
     version: latest
     variants:

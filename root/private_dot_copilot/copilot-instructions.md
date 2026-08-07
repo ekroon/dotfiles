@@ -51,3 +51,17 @@ This applies to all PR creation tools, skills, and workflows (gh CLI, create-pr 
 ## Development and Testing
 
 Use TDD (Test Driven Development) when doing changes. 
+
+## AI Authorship Disclosure
+
+Always make it clear when AI created or substantially drafted text that will be published for others.
+
+- Start the disclosure with `🤖`.
+- For comments and other short text, place a subtle disclosure at the bottom.
+- For issue descriptions, proposals, and other longer text, place the disclosure at the top.
+- Render the disclosure in smaller text when the target supports it.
+- Use `<sub>🤖 Drafted with AI assistance</sub>` by default.
+- Use `<sub>🤖 Drafted with AI assistance and reviewed by me</sub>` only when the user has clearly reviewed the exact text:
+  - the user explicitly says they read or reviewed it; or
+  - the complete output was shown to the user and they subsequently approved posting it.
+- Approval given before seeing the complete output does not count as review.

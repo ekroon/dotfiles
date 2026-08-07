@@ -1,2 +1,4 @@
 theme = GitHub Dark Colorblind
 minimum-contrast = 1.8
+
+shell-integration-features = true
