@@ -1,0 +1,71 @@
+#!/bin/bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+rendered_script="$(mktemp)"
+trap 'rm -f "$rendered_script"' EXIT
+
+chezmoi execute-template < "$repo_root/root/private_dot_local/private_bin/executable_install-kanata-launchdaemon.sh.tmpl" > "$rendered_script"
+
+run_scenario() {
+  bash -c '
+    set -euo pipefail
+    source "$1"
+
+    PLIST_STATUS="$2"
+    LEGACY_JOBS="$3"
+    KANATA_PIDS="$4"
+    LISTENER_PIDS="$5"
+    KARABINER_PIDS="$6"
+
+    validate_inputs() { :; }
+    managed_daemon_details() { printf "running\t321\n"; }
+    installed_plist_status() { printf "%s\n" "$PLIST_STATUS"; }
+    legacy_job_labels() { printf "%s" "$LEGACY_JOBS"; }
+    kanata_process_pids() { printf "%s\n" "$KANATA_PIDS"; }
+    listener_pids() { printf "%s\n" "$LISTENER_PIDS"; }
+    karabiner_core_pids() { printf "%s\n" "$KARABINER_PIDS"; }
+    process_details() { printf "  mocked process details\n"; }
+    recent_log_errors() { :; }
+
+    doctor
+  ' _ "$rendered_script" "$@"
+}
+
+assert_contains() {
+  local output="$1"
+  local expected="$2"
+
+  if [[ "$output" != *"$expected"* ]]; then
+    echo "Expected output to contain: $expected" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+}
+
+output="$(run_scenario current "" 321 321 "")"
+assert_contains "$output" "[OK] Managed daemon is running (pid 321)"
+assert_contains "$output" "[OK] One Kanata process is running"
+assert_contains "$output" "[OK] TCP port 58230 is owned by the managed daemon"
+assert_contains "$output" "Doctor found no problems"
+
+output="$(run_scenario current "" 321 unknown "")"
+assert_contains "$output" "[OK] TCP port 58230 is reachable; macOS hid the root-owned listener details"
+assert_contains "$output" "Doctor found no problems"
+
+set +e
+output="$(run_scenario stale "system/homebrew.mxcl.kanata" $'321\n654' 654 777 2>&1)"
+status=$?
+set -e
+
+if [ "$status" -eq 0 ]; then
+  echo "Expected broken doctor scenario to fail" >&2
+  exit 1
+fi
+
+assert_contains "$output" "[FAIL] Installed LaunchDaemon plist differs from the rendered plist"
+assert_contains "$output" "[FAIL] Legacy Kanata launchd job is loaded: system/homebrew.mxcl.kanata"
+assert_contains "$output" "[FAIL] Multiple Kanata processes are running: 321 654"
+assert_contains "$output" "[FAIL] TCP port 58230 is owned by pid 654, not managed daemon pid 321"
+assert_contains "$output" "[FAIL] Karabiner core keyboard process is running: 777"
+assert_contains "$output" "Run install-kanata-launchdaemon.sh --install to repair the managed setup"

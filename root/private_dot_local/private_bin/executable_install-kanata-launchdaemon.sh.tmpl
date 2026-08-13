@@ -15,8 +15,9 @@ KARABINER_AGENTS="/Library/Application Support/org.pqrs/Karabiner-Elements/Karab
 
 usage() {
   cat <<'EOF'
-Usage: install-kanata-launchdaemon.sh [--check|--install]
+Usage: install-kanata-launchdaemon.sh [--doctor|--check|--install]
 
+  --doctor     Diagnose the installed daemon and runtime state (default).
   --check      Validate the rendered plist and kanata config without installing.
   --install    Install the LaunchDaemon to /Library/LaunchDaemons and bootstrap it.
 
@@ -101,6 +102,211 @@ validate_inputs() {
   "$KANATA_BINARY" --check --cfg "$HOME/.config/kanata/kanata.kbd" >/dev/null
 }
 
+managed_daemon_details() {
+  local job
+  local pid
+  local state
+
+  if ! job="$(launchctl print system/"$LABEL" 2>/dev/null)"; then
+    return 1
+  fi
+
+  state="$(printf '%s\n' "$job" | awk -F' = ' '/^[[:space:]]*state =/ { print $2; exit }')"
+  pid="$(printf '%s\n' "$job" | awk -F' = ' '/^[[:space:]]*pid =/ { print $2; exit }')"
+  printf '%s\t%s\n' "${state:-unknown}" "${pid:-unknown}"
+}
+
+installed_plist_status() {
+  if [ ! -f "$PLIST_TARGET" ]; then
+    echo "missing"
+  elif cmp -s "$PLIST_SOURCE" "$PLIST_TARGET"; then
+    echo "current"
+  else
+    echo "stale"
+  fi
+}
+
+legacy_job_labels() {
+  local domain
+
+  for domain in system gui/"$(id -u)"; do
+    if launchctl print "$domain/homebrew.mxcl.kanata" >/dev/null 2>&1; then
+      echo "$domain/homebrew.mxcl.kanata"
+    fi
+  done
+}
+
+kanata_process_pids() {
+  pgrep -x kanata 2>/dev/null | sort -n || true
+}
+
+listener_pids() {
+  local pids
+
+  pids="$(lsof -nP -t -iTCP:58230 -sTCP:LISTEN 2>/dev/null | sort -nu || true)"
+  if [ -n "$pids" ]; then
+    printf '%s\n' "$pids"
+  elif nc -z 127.0.0.1 58230 >/dev/null 2>&1; then
+    # macOS can hide root-owned socket details from an unprivileged lsof.
+    echo "unknown"
+  fi
+}
+
+karabiner_core_pids() {
+  pgrep -x karabiner_grabber 2>/dev/null | sort -n || true
+}
+
+process_details() {
+  local pids="$1"
+
+  if [ -n "$pids" ]; then
+    ps -o pid=,user=,command= -p "$(printf '%s' "$pids" | tr ' ' ',')" 2>/dev/null || true
+  fi
+}
+
+recent_log_errors() {
+  local log_file="$LOG_DIR/kanata.log"
+
+  if [ -f "$log_file" ]; then
+    echo ""
+    echo "Recent suspicious log lines:"
+    tail -n 80 "$log_file" |
+      grep -Ei 'error|failed|panic|already in use|permission denied|device.*not found' |
+      tail -n 12 || echo "  none found"
+  fi
+}
+
+doctor() {
+  local daemon_details=""
+  local daemon_pid=""
+  local daemon_state=""
+  local issues=0
+  local legacy_jobs=""
+  local listener_pid_list=""
+  local listener_pids_text=""
+  local pid_count=0
+  local pid_list=""
+  local pids=""
+  local plist_status=""
+  local karabiner_pids=""
+
+  echo "Kanata doctor"
+  echo "============="
+
+  if (validate_inputs); then
+    echo "[OK] Rendered plist, Kanata config, binary, and dependencies are valid"
+  else
+    echo "[FAIL] Rendered configuration or a required dependency is invalid"
+    issues=$((issues + 1))
+  fi
+
+  plist_status="$(installed_plist_status)"
+  case "$plist_status" in
+    current)
+      echo "[OK] Installed LaunchDaemon plist matches the rendered plist"
+      ;;
+    missing)
+      echo "[FAIL] Managed LaunchDaemon plist is not installed at $PLIST_TARGET"
+      issues=$((issues + 1))
+      ;;
+    *)
+      echo "[FAIL] Installed LaunchDaemon plist differs from the rendered plist"
+      issues=$((issues + 1))
+      ;;
+  esac
+
+  if daemon_details="$(managed_daemon_details)"; then
+    IFS=$'\t' read -r daemon_state daemon_pid <<< "$daemon_details"
+    if [ "$daemon_state" = "running" ] && [[ "$daemon_pid" =~ ^[0-9]+$ ]]; then
+      echo "[OK] Managed daemon is running (pid $daemon_pid)"
+    else
+      echo "[FAIL] Managed daemon state is $daemon_state (pid $daemon_pid)"
+      issues=$((issues + 1))
+    fi
+  else
+    echo "[FAIL] Managed launchd job system/$LABEL is not loaded"
+    issues=$((issues + 1))
+  fi
+
+  legacy_jobs="$(legacy_job_labels)"
+  if [ -z "$legacy_jobs" ]; then
+    echo "[OK] No legacy Homebrew Kanata launchd job is loaded"
+  else
+    while IFS= read -r legacy_job; do
+      [ -n "$legacy_job" ] || continue
+      echo "[FAIL] Legacy Kanata launchd job is loaded: $legacy_job"
+      issues=$((issues + 1))
+    done <<< "$legacy_jobs"
+  fi
+
+  pids="$(kanata_process_pids)"
+  pid_list="$(printf '%s\n' "$pids" | awk 'NF' | paste -sd ' ' -)"
+  pid_count="$(printf '%s\n' "$pids" | awk 'NF { count++ } END { print count + 0 }')"
+  case "$pid_count" in
+    0)
+      echo "[FAIL] No Kanata process is running"
+      issues=$((issues + 1))
+      ;;
+    1)
+      echo "[OK] One Kanata process is running"
+      ;;
+    *)
+      echo "[FAIL] Multiple Kanata processes are running: $pid_list"
+      process_details "$pid_list"
+      issues=$((issues + 1))
+      ;;
+  esac
+
+  if [[ "$daemon_pid" =~ ^[0-9]+$ ]] && [ "$pid_count" -gt 0 ]; then
+    case " $pid_list " in
+      *" $daemon_pid "*) ;;
+      *)
+        echo "[FAIL] Managed daemon pid $daemon_pid is not in the Kanata process list: $pid_list"
+        issues=$((issues + 1))
+        ;;
+    esac
+  fi
+
+  listener_pids_text="$(listener_pids)"
+  listener_pid_list="$(printf '%s\n' "$listener_pids_text" | awk 'NF' | paste -sd ' ' -)"
+  if [ "$listener_pid_list" = "unknown" ] && [ "$pid_count" -eq 1 ] && [ "$pid_list" = "$daemon_pid" ]; then
+    echo "[OK] TCP port 58230 is reachable; macOS hid the root-owned listener details"
+  elif [ "$listener_pid_list" = "unknown" ]; then
+    echo "[FAIL] TCP port 58230 is reachable, but its owner is hidden and the process state is inconsistent"
+    issues=$((issues + 1))
+  elif [ -z "$listener_pid_list" ]; then
+    echo "[FAIL] Nothing is listening on Kanata TCP port 58230"
+    issues=$((issues + 1))
+  elif [[ "$daemon_pid" =~ ^[0-9]+$ ]] && [ "$listener_pid_list" = "$daemon_pid" ]; then
+    echo "[OK] TCP port 58230 is owned by the managed daemon"
+  elif [[ "$daemon_pid" =~ ^[0-9]+$ ]]; then
+    echo "[FAIL] TCP port 58230 is owned by pid $listener_pid_list, not managed daemon pid $daemon_pid"
+    issues=$((issues + 1))
+  else
+    echo "[FAIL] TCP port 58230 is owned by pid $listener_pid_list, but the managed daemon pid is unknown"
+    issues=$((issues + 1))
+  fi
+
+  karabiner_pids="$(karabiner_core_pids)"
+  if [ -z "$karabiner_pids" ]; then
+    echo "[OK] Karabiner's competing keyboard grabber is not running"
+  else
+    echo "[FAIL] Karabiner core keyboard process is running: $(printf '%s\n' "$karabiner_pids" | paste -sd ' ' -)"
+    issues=$((issues + 1))
+  fi
+
+  echo ""
+  if [ "$issues" -eq 0 ]; then
+    echo "Doctor found no problems"
+    return 0
+  fi
+
+  echo "Doctor found $issues problem(s)"
+  echo "Run install-kanata-launchdaemon.sh --install to repair the managed setup"
+  recent_log_errors
+  return 1
+}
+
 install_launchdaemon() {
   ensure_sudo
   validate_inputs
@@ -126,33 +332,48 @@ install_launchdaemon() {
   echo "If remapping does not work, verify that Karabiner-Elements is installed and fully available"
 }
 
-mode="check"
-case "${1:-}" in
-  --check)
-    mode="check"
-    ;;
-  --install)
-    mode="install"
-    ;;
-  "")
-    mode="check"
-    ;;
-  -h|--help)
-    usage
-    exit 0
-    ;;
-  *)
-    usage >&2
-    exit 1
-    ;;
-esac
+main() {
+  local mode="doctor"
 
-if [ "$mode" = "check" ]; then
-  validate_inputs
-  echo "Kanata LaunchDaemon plist and config look valid"
-  echo "Run this script with --install to install it to /Library/LaunchDaemons"
-  exit 0
+  case "${1:-}" in
+    --doctor)
+      mode="doctor"
+      ;;
+    --check)
+      mode="check"
+      ;;
+    --install)
+      mode="install"
+      ;;
+    "")
+      mode="doctor"
+      ;;
+    -h|--help)
+      usage
+      return 0
+      ;;
+    *)
+      usage >&2
+      return 1
+      ;;
+  esac
+
+  if [ "$mode" = "doctor" ]; then
+    doctor
+    return $?
+  fi
+
+  if [ "$mode" = "check" ]; then
+    validate_inputs
+    echo "Kanata LaunchDaemon plist and config look valid"
+    echo "Run this script with --install to install it to /Library/LaunchDaemons"
+    return 0
+  fi
+
+  install_launchdaemon
+}
+
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
+  main "$@"
 fi
-
-install_launchdaemon
 {{- end }}
