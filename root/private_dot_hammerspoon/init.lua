@@ -2,6 +2,8 @@ local ipc = require("hs.ipc")
 local fs = require("hs.fs")
 local MEH = { "ctrl", "alt", "shift" }
 
+hs.approvedReload = require("approved_reload").start({ configdir = hs.configdir })
+
 local function ipcCliInstallPrefix()
   if fs.attributes("/opt/homebrew/bin", "mode") == "directory" then
     return "/opt/homebrew"

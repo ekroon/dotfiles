@@ -1,0 +1,139 @@
+#!/bin/bash
+set -euo pipefail
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Required command is unavailable: $1" >&2
+    exit 1
+  fi
+}
+
+require_command chezmoi
+require_command git
+require_command mise
+require_command shasum
+
+source_dir="$(dirname "$(chezmoi source-path "$HOME/.hammerspoon/init.lua")")"
+repo_root="$(git -C "$source_dir" rev-parse --show-toplevel)"
+lock_dir="$source_dir/.reload-approval.lock"
+lock_acquired=false
+scratch=""
+
+cleanup() {
+  if [ -n "$scratch" ] && [ -d "$scratch" ]; then
+    rm -rf "$scratch"
+  fi
+  if [ "$lock_acquired" = true ]; then
+    rmdir "$lock_dir" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT INT TERM
+
+if ! mkdir "$lock_dir" 2>/dev/null; then
+  echo "Another Hammerspoon approval is already running: $lock_dir" >&2
+  exit 1
+fi
+lock_acquired=true
+scratch="$(mktemp -d "$source_dir/.reload-approval.XXXXXX")"
+mkdir -p "$scratch/rendered"
+
+inventory_target="$HOME/.hammerspoon/reload-inventory"
+inventory_rendered="$scratch/reload-inventory"
+chezmoi cat "$inventory_target" > "$inventory_rendered"
+
+validate_artifacts() {
+  local manifest="${1:-}"
+  mise x lua -- lua - "$source_dir/approved_reload.lua" "$inventory_rendered" "$manifest" <<'LUA'
+local modulePath = assert(arg[1])
+local inventoryPath = assert(arg[2])
+local manifestPath = arg[3]
+
+local function read(path)
+  local file = assert(io.open(path, "rb"))
+  local bytes = assert(file:read("*a"))
+  file:close()
+  return bytes
+end
+
+local approvedReload = dofile(modulePath)
+local inventory = approvedReload.parseInventory(read(inventoryPath))
+if manifestPath and manifestPath ~= "" then
+  approvedReload.parseManifest(read(manifestPath), inventory)
+end
+LUA
+}
+
+validate_artifacts
+
+runtime_files=()
+first_line=true
+while IFS= read -r path; do
+  if [ "$first_line" = true ]; then
+    first_line=false
+  else
+    runtime_files+=("$path")
+  fi
+done < "$inventory_rendered"
+
+if find "$source_dir" -type l -name '*.lua' -print -quit | grep -q .; then
+  echo "Hammerspoon runtime source contains a Lua symlink" >&2
+  exit 1
+fi
+
+(
+  cd "$source_dir"
+  find . -type f -name '*.lua' ! -path './test/*' -print |
+    sed 's#^\./##' |
+    LC_ALL=C sort
+) > "$scratch/discovered"
+printf '%s\n' "${runtime_files[@]}" > "$scratch/inventory-paths"
+if ! diff -u "$scratch/inventory-paths" "$scratch/discovered"; then
+  echo "reload-inventory does not exactly match managed runtime Lua files" >&2
+  exit 1
+fi
+
+(
+  cd "$source_dir"
+  mise x lua -- lua test/run.lua
+)
+
+rendered_files=()
+for path in "${runtime_files[@]}"; do
+  rendered="$scratch/rendered/$path"
+  mkdir -p "$(dirname "$rendered")"
+  chezmoi cat "$HOME/.hammerspoon/$path" > "$rendered"
+  rendered_files+=("$rendered")
+done
+mise x lua -- luac -p "${rendered_files[@]}"
+
+manifest_candidate="$scratch/reload-manifest"
+printf 'approved-reload-manifest-v1\n' > "$manifest_candidate"
+for i in "${!runtime_files[@]}"; do
+  digest="$(shasum -a 256 "${rendered_files[$i]}" | awk '{ print $1 }')"
+  printf '%s\t%s\n' "$digest" "${runtime_files[$i]}" >> "$manifest_candidate"
+done
+validate_artifacts "$manifest_candidate"
+
+mv "$manifest_candidate" "$source_dir/reload-manifest"
+rendered_manifest="$scratch/rendered-reload-manifest"
+chezmoi cat "$HOME/.hammerspoon/reload-manifest" > "$rendered_manifest"
+if ! cmp -s "$source_dir/reload-manifest" "$rendered_manifest"; then
+  echo "Rendered reload-manifest differs from its source" >&2
+  exit 1
+fi
+
+approval_candidate="$scratch/reload-approval"
+approval_digest="$(shasum -a 256 "$rendered_manifest" | awk '{ print $1 }')"
+{
+  printf 'approved-reload-approval-v1\n'
+  printf '%s\n' "$approval_digest"
+} > "$approval_candidate"
+mv "$approval_candidate" "$source_dir/reload-approval"
+
+echo "Approved Hammerspoon reload identity: $approval_digest"
+git -C "$repo_root" --no-pager diff -- \
+  "$source_dir/reload-inventory" \
+  "$source_dir/reload-manifest" \
+  "$source_dir/reload-approval"
