@@ -2,6 +2,7 @@ local suites = {
   dofile("test/AppWindowCycler_test.lua"),
   dofile("test/approved_reload_test.lua"),
   dofile("test/kanata_test.lua"),
+  dofile("test/secure_input_test.lua"),
   dofile("test/init_test.lua"),
 }
 

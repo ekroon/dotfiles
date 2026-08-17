@@ -3,3 +3,4 @@ Spoons/AppWindowCycler.spoon/init.lua
 approved_reload.lua
 init.lua
 kanata.lua
+secure-input.lua

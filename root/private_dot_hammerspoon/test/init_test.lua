@@ -2,7 +2,21 @@ local M = {}
 
 local function assertEqual(actual, expected, message)
   if actual ~= expected then
-    error(string.format("%s: expected %s, got %s", message, tostring(expected), tostring(actual)), 2)
+    error(
+      string.format(
+        "%s: expected %s, got %s",
+        message or "values should be equal",
+        tostring(expected),
+        tostring(actual)
+      ),
+      2
+    )
+  end
+end
+
+local function assertTrue(value, message)
+  if not value then
+    error(message or "expected value to be truthy", 2)
   end
 end
 
@@ -13,8 +27,17 @@ local function loadConfig()
   local previousFs = package.loaded["hs.fs"]
   local previousKanata = package.loaded.kanata
   local previousApprovedReload = package.loaded.approved_reload
+  local previousSecureInput = package.loaded["secure-input"]
   local approvedOptions = nil
   local approvedController = {}
+  local secureInputController = {
+    stopCalls = 0,
+  }
+  function secureInputController:stop()
+    self.stopCalls = self.stopCalls + 1
+  end
+  local secureInputSetupCalls = 0
+  local previousShutdownCalls = 0
 
   package.loaded["hs.ipc"] = {
     cliStatus = function()
@@ -36,10 +59,19 @@ local function loadConfig()
       return approvedController
     end,
   }
+  package.loaded["secure-input"] = {
+    setup = function()
+      secureInputSetupCalls = secureInputSetupCalls + 1
+      return secureInputController
+    end,
+  }
 
   hs = {
     configdir = "/tmp/.hammerspoon",
     loadSpoon = function() end,
+    shutdownCallback = function()
+      previousShutdownCalls = previousShutdownCalls + 1
+    end,
   }
   spoon = {
     AppWindowCycler = {},
@@ -58,11 +90,18 @@ local function loadConfig()
   end
 
   dofile("init.lua")
-  local result = {
+  local config = {
     approvedController = hs.approvedReload,
     approvedOptions = approvedOptions,
     cyclers = hs.windowCyclers,
     expectedApprovedController = approvedController,
+    previousShutdownCalls = function()
+      return previousShutdownCalls
+    end,
+    secureInputController = secureInputController,
+    secureInputIndicator = hs.secureInputIndicator,
+    secureInputSetupCalls = secureInputSetupCalls,
+    shutdownCallback = hs.shutdownCallback,
   }
 
   hs = previousHs
@@ -71,8 +110,9 @@ local function loadConfig()
   package.loaded["hs.fs"] = previousFs
   package.loaded.kanata = previousKanata
   package.loaded.approved_reload = previousApprovedReload
+  package.loaded["secure-input"] = previousSecureInput
 
-  return result
+  return config
 end
 
 M.tests = {
@@ -90,6 +130,22 @@ M.tests = {
       assertEqual(table.concat(cyclers.terminal.appNames, ","), "Obsidian", "F4 apps")
       assertEqual(cyclers.terminal.launchWhenClosed, true, "F4 launch behavior")
       assertEqual(cyclers.calendar.launchWhenClosed, false, "F5 launch behavior")
+    end,
+  },
+  {
+    name = "configures and shuts down the Secure Input indicator",
+    run = function()
+      local config = loadConfig()
+
+      assertEqual(config.secureInputSetupCalls, 1, "Secure Input setup calls")
+      assertTrue(
+        config.secureInputIndicator == config.secureInputController,
+        "Secure Input controller should be retained on hs"
+      )
+
+      config.shutdownCallback()
+      assertEqual(config.secureInputController.stopCalls, 1, "shutdown should stop the Secure Input controller")
+      assertEqual(config.previousShutdownCalls(), 1, "shutdown should invoke the previous callback")
     end,
   },
 }

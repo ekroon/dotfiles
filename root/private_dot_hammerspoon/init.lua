@@ -18,6 +18,16 @@ end
 
 require("kanata").setup()
 
+local previousShutdownCallback = hs.shutdownCallback
+local secureInputIndicator = require("secure-input").setup()
+hs.secureInputIndicator = secureInputIndicator
+hs.shutdownCallback = function()
+  secureInputIndicator:stop()
+  if previousShutdownCallback then
+    previousShutdownCallback()
+  end
+end
+
 hs.loadSpoon("AppWindowCycler")
 local AppWindowCycler = spoon.AppWindowCycler
 
