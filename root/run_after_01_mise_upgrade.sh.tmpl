@@ -1,0 +1,31 @@
+#!/bin/bash
+set -euo pipefail
+
+chezmoi_command="${CHEZMOI_COMMAND:-{{ .chezmoi.command }}}"
+if [ "${chezmoi_command}" != "update" ]; then
+  exit 0
+fi
+
+if ! command -v mise >/dev/null 2>&1; then
+  echo "mise is required to upgrade configured tools" >&2
+  exit 1
+fi
+
+if [ -z "${GITHUB_TOKEN:-}" ]; then
+  if [ -n "${GH_TOKEN:-}" ]; then
+    export GITHUB_TOKEN="${GH_TOKEN}"
+  elif command -v gh >/dev/null 2>&1; then
+    if github_token="$(gh auth token --hostname github.com 2>/dev/null)"; then
+      export GITHUB_TOKEN="${github_token}"
+    fi
+  fi
+fi
+
+mise upgrade \
+  --yes \
+{{- range .mise_tools }}
+{{- if and (not (kindIs "string" .)) (hasKey . "auto_upgrade") (not (get . "auto_upgrade")) }}
+  --exclude {{ get . "name" | quote }} \
+{{- end }}
+{{- end }}
+  --quiet >/dev/null

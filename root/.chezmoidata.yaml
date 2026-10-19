@@ -14,6 +14,9 @@ homebrew_bundle:
 # mise tool configuration
 # Tool filters are OR'd within each filter key and AND'd across keys.
 # Missing filters match every environment.
+mise_update_policy:
+  minimum_release_age: "7d"
+
 mise_tools:
   - fzf
   - lua
@@ -103,6 +106,10 @@ mise_tools:
     filters:
       os: [darwin]
       environment: [local]
+  - name: "github:golangci/golangci-lint"
+    filters:
+      os: [darwin]
+      environment: [local]
   - name: gum
     filters:
       os: [darwin]
@@ -112,6 +119,7 @@ mise_tools:
       os: [darwin]
       environment: [local]
   - name: "npm:@github/copilot"
+    minimum_release_age: "0s"
     filters:
       os: [darwin]
       environment: [local]
@@ -133,15 +141,12 @@ mise_tools:
     filters:
       os: [darwin]
       environment: [local]
-  - name: "npm:wgc"
-    filters:
-      os: [darwin]
-      environment: [local]
   - name: ripgrep-all
     filters:
       environment: [codespace]
       repo: ["github/*"]
   - name: "npm:@github/copilot"
+    minimum_release_age: "0s"
     filters:
       environment: [codespace]
       repo: ["github/*"]
@@ -149,6 +154,7 @@ mise_tools:
   - name: "npm:@tobilu/qmd"
   - name: "github:ogulcancelik/herdr"
     version: latest
+    auto_upgrade: false
     variants:
       - asset_pattern: "herdr-macos-aarch64"
         bin: "herdr"

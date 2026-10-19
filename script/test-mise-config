@@ -1,0 +1,171 @@
+#!/bin/bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+mise_data="$(cat "$repo_root/root/.chezmoidata.yaml")"
+
+assert_contains() {
+  local value="$1"
+  local expected="$2"
+
+  if [[ "$value" != *"$expected"* ]]; then
+    echo "Expected output to contain: $expected" >&2
+    echo "$value" >&2
+    exit 1
+  fi
+}
+
+assert_not_contains() {
+  local value="$1"
+  local unexpected="$2"
+
+  if [[ "$value" == *"$unexpected"* ]]; then
+    echo "Expected output not to contain: $unexpected" >&2
+    echo "$value" >&2
+    exit 1
+  fi
+}
+
+install_templates=("$repo_root"/root/run_onchange_after_*_mise_install.sh.tmpl)
+if [ "${#install_templates[@]}" -ne 1 ] || [ ! -f "${install_templates[0]}" ]; then
+  echo "Expected exactly one mise install hook" >&2
+  exit 1
+fi
+install_template="${install_templates[0]}"
+install_target="${install_template##*/}"
+install_target="${install_target#run_onchange_after_}"
+install_target="${install_target%.tmpl}"
+for setup_template in "$repo_root"/root/run_once_after_01_{configuration,go_environment}.sh.tmpl; do
+  setup_target="${setup_template##*/}"
+  setup_target="${setup_target#run_once_after_}"
+  setup_target="${setup_target%.tmpl}"
+  first_target="$(printf '%s\n' "$install_target" "$setup_target" | LC_ALL=C sort | head -n 1)"
+  if [ "$first_target" != "$install_target" ]; then
+    echo "Mise installation must run before $setup_target" >&2
+    exit 1
+  fi
+done
+
+render_config() {
+  local config
+  config="$(
+    DEVCONTAINER="$4" MISE_DISTRO_CODENAME=jammy \
+      chezmoi --source "$repo_root" \
+        --override-data "{\"chezmoi\":{\"os\":\"$1\"},\"codespaces\":$2,\"repo\":\"$3\"}" \
+        execute-template < "$repo_root/root/private_dot_config/mise/config.toml.tmpl"
+  )" || return
+  printf '%s\n' "$config" > "$tmp_dir/config.toml"
+  MISE_CONFIG_DIR="$tmp_dir" mise --cd "$tmp_dir" config ls >/dev/null || return
+  printf '%s\n' "$config"
+}
+
+local_config="$(render_config darwin false "" false)"
+assert_contains "$local_config" 'lockfile = true'
+assert_contains "$local_config" 'minimum_release_age = "7d"'
+assert_not_contains "$local_config" 'minimum_release_age_excludes'
+assert_contains "$local_config" $'[tools."npm:@github/copilot"]\nversion = "latest"\nminimum_release_age = "0s"'
+assert_contains "$local_config" '[settings.status]'
+assert_contains "$local_config" 'missing_tools = "never"'
+assert_contains "$local_config" '"github:golangci/golangci-lint" = "latest"'
+assert_not_contains "$local_config" '"npm:wgc"'
+
+linux_config="$(render_config linux false "" false)"
+assert_contains "$linux_config" 'minimum_release_age = "7d"'
+assert_not_contains "$linux_config" '[tools."npm:@github/copilot"]'
+assert_not_contains "$linux_config" '"github:golangci/golangci-lint"'
+assert_not_contains "$linux_config" '"gh" = "latest"'
+
+codespace_config="$(render_config linux true github/github false)"
+assert_contains "$codespace_config" 'minimum_release_age = "7d"'
+assert_not_contains "$codespace_config" 'minimum_release_age_excludes'
+assert_contains "$codespace_config" $'[tools."npm:@github/copilot"]\nversion = "latest"\nminimum_release_age = "0s"'
+assert_not_contains "$codespace_config" '"github:golangci/golangci-lint"'
+assert_contains "$codespace_config" '"gh" = "latest"'
+
+devcontainer_config="$(render_config linux false github/github true)"
+assert_contains "$devcontainer_config" 'minimum_release_age = "7d"'
+assert_not_contains "$devcontainer_config" '[tools."npm:@github/copilot"]'
+assert_not_contains "$devcontainer_config" '"github:golangci/golangci-lint"'
+assert_contains "$devcontainer_config" '"gh" = "latest"'
+assert_contains "$mise_data" 'auto_upgrade: false'
+assert_not_contains "$mise_data" 'automatic_upgrade_excludes:'
+assert_contains "$mise_data" 'minimum_release_age: "0s"'
+assert_not_contains "$mise_data" 'minimum_release_age_excludes:'
+
+install_script="$(
+  chezmoi execute-template < "$install_template"
+)"
+rendered_config_hash="$(
+  printf '{{ includeTemplate "private_dot_config/mise/config.toml.tmpl" . | sha256sum }}\n' |
+    chezmoi execute-template
+)"
+assert_contains "$install_script" "# mise config hash: $rendered_config_hash"
+assert_contains "$install_script" "mise lock --global --platform \"\${mise_platform}\" --quiet >/dev/null"
+assert_contains "$install_script" 'mise install --yes --quiet >/dev/null'
+
+mkdir -p "$tmp_dir/bin"
+cat > "$tmp_dir/bin/mise" <<'EOF'
+#!/bin/bash
+if [ "$1" = "--version" ]; then
+  echo "2026.8.16 macos-arm64 (2026-08-31)"
+  exit 0
+fi
+if [ "${GITHUB_TOKEN:-}" != "test-token" ]; then
+  echo "mise did not receive GitHub authentication" >&2
+  exit 1
+fi
+printf '%s\n' "$*" >> "${MISE_TEST_LOG}"
+EOF
+chmod +x "$tmp_dir/bin/mise"
+
+cat > "$tmp_dir/bin/gh" <<'EOF'
+#!/bin/bash
+if [ "$*" = "auth token --hostname github.com" ]; then
+  echo "test-token"
+  exit 0
+fi
+exit 1
+EOF
+chmod +x "$tmp_dir/bin/gh"
+
+printf '%s\n' "$install_script" > "$tmp_dir/install.sh"
+GITHUB_TOKEN="" GH_TOKEN="" MISE_TEST_LOG="$tmp_dir/install.log" PATH="$tmp_dir/bin:$PATH" bash "$tmp_dir/install.sh"
+expected_install_calls=$'lock --global --platform macos-arm64 --quiet\ninstall --yes --quiet'
+actual_install_calls="$(cat "$tmp_dir/install.log")"
+if [ "$actual_install_calls" != "$expected_install_calls" ]; then
+  echo "Unexpected mise install calls:" >&2
+  echo "$actual_install_calls" >&2
+  exit 1
+fi
+
+configuration_script="$(
+  chezmoi execute-template < "$repo_root/root/run_once_after_01_configuration.sh.tmpl"
+)"
+assert_not_contains "$configuration_script" "mise install"
+
+upgrade_template="$repo_root/root/run_after_01_mise_upgrade.sh.tmpl"
+upgrade_script="$(chezmoi execute-template < "$upgrade_template")"
+assert_contains "$upgrade_script" "chezmoi_command=\"\${CHEZMOI_COMMAND:-execute-template}\""
+assert_contains "$upgrade_script" "if [ \"\${chezmoi_command}\" != \"update\" ]; then"
+assert_contains "$upgrade_script" '--exclude "github:ogulcancelik/herdr"'
+assert_contains "$upgrade_script" "mise upgrade \\"
+assert_not_contains "$upgrade_script" '--minimum-release-age'
+assert_contains "$upgrade_script" '>/dev/null'
+
+printf '%s\n' "$upgrade_script" > "$tmp_dir/upgrade.sh"
+GITHUB_TOKEN="" GH_TOKEN="" MISE_TEST_LOG="$tmp_dir/upgrade.log" PATH="$tmp_dir/bin:$PATH" CHEZMOI_COMMAND=apply bash "$tmp_dir/upgrade.sh"
+if [ -e "$tmp_dir/upgrade.log" ]; then
+  echo "mise upgrade ran during chezmoi apply" >&2
+  exit 1
+fi
+
+GITHUB_TOKEN="" GH_TOKEN="" MISE_TEST_LOG="$tmp_dir/upgrade.log" PATH="$tmp_dir/bin:$PATH" CHEZMOI_COMMAND=update bash "$tmp_dir/upgrade.sh"
+expected_upgrade_call='upgrade --yes --exclude github:ogulcancelik/herdr --quiet'
+actual_upgrade_call="$(cat "$tmp_dir/upgrade.log")"
+if [ "$actual_upgrade_call" != "$expected_upgrade_call" ]; then
+  echo "Unexpected mise upgrade call:" >&2
+  echo "$actual_upgrade_call" >&2
+  exit 1
+fi

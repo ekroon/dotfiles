@@ -44,7 +44,7 @@
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if and $matches (not (or (get $tool "asset_pattern") (get $tool "bin") (get $tool "bin_path"))) }}
+{{- if and $matches (not (or (get $tool "asset_pattern") (get $tool "bin") (get $tool "bin_path") (get $tool "minimum_release_age"))) }}
 {{ get $tool "name" | quote }} = {{ default "latest" (get $tool "version") | quote }}
 {{- end }}
 {{- end }}
@@ -143,6 +143,7 @@
 {{- $asset_pattern := get $tool "asset_pattern" -}}
 {{- $bin := get $tool "bin" -}}
 {{- $bin_path := get $tool "bin_path" -}}
+{{- $minimum_release_age := get $tool "minimum_release_age" -}}
 {{- $filters := get $tool "filters" -}}
 {{- if $filters }}
 {{- $tool_os := get $filters "os" -}}
@@ -179,7 +180,7 @@
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if and $matches (or $asset_pattern $bin $bin_path) }}
+{{- if and $matches (or $asset_pattern $bin $bin_path $minimum_release_age) }}
 
 [tools.{{ get $tool "name" | quote }}]
 version = {{ default "latest" (get $tool "version") | quote }}
@@ -191,6 +192,9 @@ bin = {{ $bin | quote }}
 {{- end }}
 {{- if $bin_path }}
 bin_path = {{ $bin_path | quote }}
+{{- end }}
+{{- if $minimum_release_age }}
+minimum_release_age = {{ $minimum_release_age | quote }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -222,6 +226,9 @@ bin_path = {{ $bin_path | quote }}
 {{- if and (not $distro_codename) (eq .chezmoi.os "linux") -}}
 {{- $distro_codename = output "sh" "-c" "sed -n 's/^VERSION_CODENAME=//p' /etc/os-release 2>/dev/null | tr -d '\"' | head -n1" | trim -}}
 {{- end -}}
+[settings.github]
+credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
+
 [tool_alias]
 {{ template "mise_aliases" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "distro_codename" $distro_codename }}
 
@@ -231,3 +238,8 @@ bin_path = {{ $bin_path | quote }}
 {{ template "mise_structured_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "distro_codename" $distro_codename }}
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
+lockfile = true
+minimum_release_age = {{ .mise_update_policy.minimum_release_age | quote }}
+
+[settings.status]
+missing_tools = "never"

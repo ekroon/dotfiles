@@ -12,7 +12,8 @@ Main subsystems:
 - `root/private_dot_config/homebrew/Brewfile.tmpl` renders the managed macOS Brewfile; `root/run_after_00_homebrew_bundle.sh.tmpl` enforces it during local Darwin applies.
 - `root/private_dot_hammerspoon` contains the Hammerspoon entry point, Kanata integration, the `AppWindowCycler` Spoon, and plain-Lua tests.
 - `root/private_dot_config/nvim` is a LazyVim config: `init.lua` only loads `config.lazy`, general config lives in `lua/config`, and plugin overrides/specs live in `lua/plugins`.
-- `run_once_after_*` and `run_after_*` templates handle one-time and recurring apply hooks such as `mise install`, tmux plugin setup, Codespaces setup, atuin login, Homebrew, and LaunchAgents.
+- `run_onchange_after_00_mise_install.sh.tmpl` installs missing mise tools when the rendered config changes, before dependent configuration hooks, while `run_after_01_mise_upgrade.sh.tmpl` quietly upgrades eligible tools during `chezmoi update`.
+- Other `run_once_after_*` and `run_after_*` templates handle tmux plugin setup, Codespaces setup, atuin login, Homebrew, and LaunchAgents.
 
 ## Build, test, and lint
 
@@ -40,6 +41,7 @@ Lint/format commands:
 
 ```bash
 shellcheck install.sh script/codespaces-post-start
+script/test-mise-config
 stylua --config-path root/private_dot_config/nvim/stylua.toml root/private_dot_config/nvim
 ```
 
@@ -71,6 +73,7 @@ For Hammerspoon changes:
 - Go templates use whitespace trimming (`{{-` / `-}}`) intentionally; preserve nearby trimming style when editing `.tmpl` files.
 - Mise tool filters in `root/.chezmoidata.yaml` are OR'd within a filter key and AND'd across keys. Environment detection is Codespaces first, then `DEVCONTAINER=true`, then local. Repository filters use `GITHUB_REPOSITORY`; distro filters use `MISE_DISTRO_CODENAME` or `/etc/os-release` on Linux.
 - Use `variants` in `mise_tools` when one logical tool needs different assets, bins, or filters per OS/environment. Prefer musl-matching `github:` tools for Codespaces/devcontainers when glibc compatibility is an issue.
+- Mise releases default to the `mise_update_policy` minimum age. Keep tool-specific behavior beside its `mise_tools` declaration, such as `minimum_release_age: "0s"` or `auto_upgrade: false`.
 - Homebrew packages are declared in `root/.chezmoidata.yaml`; avoid editing `root/private_dot_config/homebrew/Brewfile.tmpl` just to add or remove packages.
 - Hammerspoon code uses the existing Spoon metatable style (`obj.__index = obj`, `obj:new(config)`, and colon methods). Prefer Hammerspoon APIs and timers over shelling out for app or window state.
 - Treat Hammerspoon APIs defensively: `hs.application.find()` may return nil, one app, or multiple apps; accessibility calls may fail depending on permissions; and cached window IDs must be checked against the current window list.
