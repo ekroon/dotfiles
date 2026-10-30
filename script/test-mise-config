@@ -56,10 +56,11 @@ fi
 
 render_config() {
   local config
+  local profile="${5:-work}"
   config="$(
     DEVCONTAINER="$4" MISE_DISTRO_CODENAME=jammy \
       chezmoi --source "$repo_root" \
-        --override-data "{\"chezmoi\":{\"os\":\"$1\"},\"codespaces\":$2,\"repo\":\"$3\"}" \
+        --override-data "{\"chezmoi\":{\"os\":\"$1\"},\"codespaces\":$2,\"repo\":\"$3\",\"machine\":{\"profile\":\"$profile\"}}" \
         execute-template < "$repo_root/root/private_dot_config/mise/private_config.toml.tmpl"
   )" || return
   printf '%s\n' "$config" > "$tmp_dir/config.toml"
@@ -77,7 +78,23 @@ assert_contains "$local_config" 'missing_tools = "never"'
 assert_contains "$local_config" '"github:golangci/golangci-lint" = "latest"'
 assert_contains "$local_config" $'[tools."apm"]\nversion = "latest"\nasset_pattern = "apm-{{ os(macos=\\\"darwin\\\") }}-{{ arch(x64=\\\"x86_64\\\", arm64=\\\"arm64\\\") }}.tar.gz"'
 assert_not_contains "$local_config" '"npm:rosie-skills"'
-assert_not_contains "$local_config" '"npm:wgc"'
+assert_contains "$local_config" '"npm:wgc" = "latest"'
+assert_contains "$local_config" '"github:github/feature-flags-mcp-server" = "latest"'
+assert_contains "$local_config" '"python" = "latest"'
+assert_contains "$local_config" '"direnv" = "latest"'
+assert_contains "$local_config" $'[tools."rust"]\nversion = "latest"\nmr_boxington = true'
+assert_contains "$local_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
+assert_contains "$local_config" '[wrappers.cargo]'
+assert_contains "$local_config" 'MBX_CARGO_SHIM_MODE = "1"'
+
+personal_config="$(render_config darwin false "" false personal)"
+assert_not_contains "$personal_config" '"npm:wgc"'
+assert_not_contains "$personal_config" '"github:github/feature-flags-mcp-server"'
+assert_not_contains "$personal_config" '"python" = "latest"'
+assert_not_contains "$personal_config" '"direnv" = "latest"'
+assert_not_contains "$personal_config" '[tools."rust"]'
+assert_not_contains "$personal_config" '[tools."mr-boxington"]'
+assert_not_contains "$personal_config" '[wrappers.cargo]'
 
 linux_config="$(render_config linux false "" false)"
 assert_contains "$linux_config" 'minimum_release_age = "7d"'
@@ -86,6 +103,8 @@ assert_not_contains "$linux_config" '"npm:rosie-skills"'
 assert_not_contains "$linux_config" '[tools."npm:@github/copilot"]'
 assert_not_contains "$linux_config" '"github:golangci/golangci-lint"'
 assert_not_contains "$linux_config" '"gh" = "latest"'
+assert_not_contains "$linux_config" '"npm:wgc"'
+assert_not_contains "$linux_config" '[wrappers.cargo]'
 
 codespace_config="$(render_config linux true github/github false)"
 assert_contains "$codespace_config" 'minimum_release_age = "7d"'
@@ -93,12 +112,46 @@ assert_not_contains "$codespace_config" 'minimum_release_age_excludes'
 assert_contains "$codespace_config" $'[tools."npm:@github/copilot"]\nversion = "latest"\nminimum_release_age = "0s"'
 assert_not_contains "$codespace_config" '"github:golangci/golangci-lint"'
 assert_contains "$codespace_config" '"gh" = "latest"'
+assert_not_contains "$codespace_config" '"npm:wgc"'
+assert_not_contains "$codespace_config" '[wrappers.cargo]'
 
 devcontainer_config="$(render_config linux false github/github true)"
 assert_contains "$devcontainer_config" 'minimum_release_age = "7d"'
 assert_not_contains "$devcontainer_config" '[tools."npm:@github/copilot"]'
 assert_not_contains "$devcontainer_config" '"github:golangci/golangci-lint"'
 assert_contains "$devcontainer_config" '"gh" = "latest"'
+assert_not_contains "$devcontainer_config" '"npm:wgc"'
+assert_not_contains "$devcontainer_config" '[wrappers.cargo]'
+
+render_custom_config() {
+  local profile="$1"
+  local tools="$2"
+  DEVCONTAINER=false MISE_DISTRO_CODENAME=jammy \
+    chezmoi --source "$repo_root" \
+      --override-data "{\"chezmoi\":{\"os\":\"darwin\"},\"codespaces\":false,\"repo\":\"\",\"machine\":{\"profile\":\"$profile\"},\"mise_tools\":$tools}" \
+      execute-template < "$repo_root/root/private_dot_config/mise/private_config.toml.tmpl"
+}
+
+profiled_tools='[{"name":"work-alias","alias":"github:example/work-alias","filters":{"profile":["work"]}},{"name":"work-variant","variants":[{"options":{"feature_enabled":true},"filters":{"profile":["work"]}}]}]'
+work_profiled_config="$(render_custom_config work "$profiled_tools")"
+personal_profiled_config="$(render_custom_config personal "$profiled_tools")"
+assert_contains "$work_profiled_config" '"work-alias" = "github:example/work-alias"'
+assert_contains "$work_profiled_config" '"work-alias" = "latest"'
+assert_contains "$work_profiled_config" $'[tools."work-variant"]\nversion = "latest"\nfeature_enabled = true'
+assert_not_contains "$personal_profiled_config" 'work-alias'
+assert_not_contains "$personal_profiled_config" 'work-variant'
+
+if invalid_options="$(render_custom_config work '[{"name":"invalid","options":{"nested":{"key":"value"}}}]' 2>&1)"; then
+  echo "Nested mise options should fail template rendering" >&2
+  exit 1
+fi
+assert_contains "$invalid_options" 'option "nested" must be a scalar'
+if duplicate_options="$(render_custom_config work '[{"name":"invalid","options":{"version":"1"}}]' 2>&1)"; then
+  echo "Duplicate mise options should fail template rendering" >&2
+  exit 1
+fi
+assert_contains "$duplicate_options" 'option "version" duplicates a structured setting'
+
 assert_contains "$mise_data" 'auto_upgrade: false'
 assert_not_contains "$mise_data" 'automatic_upgrade_excludes:'
 assert_contains "$mise_data" 'minimum_release_age: "0s"'

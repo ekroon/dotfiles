@@ -2,6 +2,7 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $profile := index . "profile" -}}
 {{- $distro_codename := index . "distro_codename" -}}
 {{- $tool := index . "tool" -}}
 {{- if kindIs "string" $tool }}
@@ -16,6 +17,10 @@
 {{- end }}
 {{- $tool_environments := get $filters "environment" -}}
 {{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_profiles := get $filters "profile" -}}
+{{- if and $tool_profiles (not (has $profile $tool_profiles)) }}
 {{- $matches = false -}}
 {{- end }}
 {{- $tool_distro_codenames := get $filters "distro_codename" -}}
@@ -44,7 +49,7 @@
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if and $matches (not (or (get $tool "asset_pattern") (get $tool "bin") (get $tool "bin_path") (get $tool "minimum_release_age"))) }}
+{{- if and $matches (not (or (get $tool "asset_pattern") (get $tool "bin") (get $tool "bin_path") (get $tool "minimum_release_age") (get $tool "options"))) }}
 {{ get $tool "name" | quote }} = {{ default "latest" (get $tool "version") | quote }}
 {{- end }}
 {{- end }}
@@ -53,16 +58,17 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $profile := index . "profile" -}}
 {{- $distro_codename := index . "distro_codename" -}}
 {{- range index . "tools" }}
 {{- if and (not (kindIs "string" .)) (get . "variants") }}
 {{- $base := deepCopy . -}}
 {{- $_ := unset $base "variants" -}}
 {{- range get . "variants" }}
-{{- template "mise_plain_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
+{{- template "mise_plain_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo "profile" $profile "distro_codename" $distro_codename }}
 {{- end }}
 {{- else }}
-{{- template "mise_plain_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
+{{- template "mise_plain_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo "profile" $profile "distro_codename" $distro_codename }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -70,6 +76,7 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $profile := index . "profile" -}}
 {{- $distro_codename := index . "distro_codename" -}}
 {{- $tool := index . "tool" -}}
 {{- if and (not (kindIs "string" $tool)) (not (get $tool "variants")) }}
@@ -82,6 +89,10 @@
 {{- end }}
 {{- $tool_environments := get $filters "environment" -}}
 {{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_profiles := get $filters "profile" -}}
+{{- if and $tool_profiles (not (has $profile $tool_profiles)) }}
 {{- $matches = false -}}
 {{- end }}
 {{- $tool_distro_codenames := get $filters "distro_codename" -}}
@@ -119,16 +130,17 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $profile := index . "profile" -}}
 {{- $distro_codename := index . "distro_codename" -}}
 {{- range index . "tools" }}
 {{- if and (not (kindIs "string" .)) (get . "variants") }}
 {{- $base := deepCopy . -}}
 {{- $_ := unset $base "variants" -}}
 {{- range get . "variants" }}
-{{- template "mise_alias" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
+{{- template "mise_alias" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo "profile" $profile "distro_codename" $distro_codename }}
 {{- end }}
 {{- else }}
-{{- template "mise_alias" dict "tool" . "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
+{{- template "mise_alias" dict "tool" . "environment" $environment "os" $os "repo" $repo "profile" $profile "distro_codename" $distro_codename }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -136,6 +148,7 @@
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $profile := index . "profile" -}}
 {{- $distro_codename := index . "distro_codename" -}}
 {{- $tool := index . "tool" -}}
 {{- if and (not (kindIs "string" $tool)) (not (get $tool "variants")) }}
@@ -144,6 +157,7 @@
 {{- $bin := get $tool "bin" -}}
 {{- $bin_path := get $tool "bin_path" -}}
 {{- $minimum_release_age := get $tool "minimum_release_age" -}}
+{{- $options := get $tool "options" -}}
 {{- $filters := get $tool "filters" -}}
 {{- if $filters }}
 {{- $tool_os := get $filters "os" -}}
@@ -152,6 +166,10 @@
 {{- end }}
 {{- $tool_environments := get $filters "environment" -}}
 {{- if and $tool_environments (not (has $environment $tool_environments)) }}
+{{- $matches = false -}}
+{{- end }}
+{{- $tool_profiles := get $filters "profile" -}}
+{{- if and $tool_profiles (not (has $profile $tool_profiles)) }}
 {{- $matches = false -}}
 {{- end }}
 {{- $tool_distro_codenames := get $filters "distro_codename" -}}
@@ -180,7 +198,7 @@
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if and $matches (or $asset_pattern $bin $bin_path $minimum_release_age) }}
+{{- if and $matches (or $asset_pattern $bin $bin_path $minimum_release_age $options) }}
 
 [tools.{{ get $tool "name" | quote }}]
 version = {{ default "latest" (get $tool "version") | quote }}
@@ -196,6 +214,17 @@ bin_path = {{ $bin_path | quote }}
 {{- if $minimum_release_age }}
 minimum_release_age = {{ $minimum_release_age | quote }}
 {{- end }}
+{{- if $options }}
+{{- range $option, $value := $options }}
+{{- if not (or (kindIs "string" $value) (kindIs "bool" $value) (kindIs "int" $value) (kindIs "float64" $value)) }}
+{{- fail (printf "mise tool %q option %q must be a scalar" (get $tool "name") $option) }}
+{{- end }}
+{{- if has $option (list "version" "asset_pattern" "bin" "bin_path" "minimum_release_age") }}
+{{- fail (printf "mise tool %q option %q duplicates a structured setting" (get $tool "name") $option) }}
+{{- end }}
+{{- end }}
+{{ toToml $options | trim }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -203,16 +232,17 @@ minimum_release_age = {{ $minimum_release_age | quote }}
 {{- $environment := index . "environment" -}}
 {{- $os := index . "os" -}}
 {{- $repo := index . "repo" -}}
+{{- $profile := index . "profile" -}}
 {{- $distro_codename := index . "distro_codename" -}}
 {{- range index . "tools" }}
 {{- if and (not (kindIs "string" .)) (get . "variants") }}
 {{- $base := deepCopy . -}}
 {{- $_ := unset $base "variants" -}}
 {{- range get . "variants" }}
-{{- template "mise_structured_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
+{{- template "mise_structured_tool" dict "tool" (mergeOverwrite (deepCopy $base) .) "environment" $environment "os" $os "repo" $repo "profile" $profile "distro_codename" $distro_codename }}
 {{- end }}
 {{- else }}
-{{- template "mise_structured_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo "distro_codename" $distro_codename }}
+{{- template "mise_structured_tool" dict "tool" . "environment" $environment "os" $os "repo" $repo "profile" $profile "distro_codename" $distro_codename }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -226,16 +256,20 @@ minimum_release_age = {{ $minimum_release_age | quote }}
 {{- if and (not $distro_codename) (eq .chezmoi.os "linux") -}}
 {{- $distro_codename = output "sh" "-c" "sed -n 's/^VERSION_CODENAME=//p' /etc/os-release 2>/dev/null | tr -d '\"' | head -n1" | trim -}}
 {{- end -}}
+{{- $profile := get (get . "machine" | default dict) "profile" | default "" -}}
+{{- if and (eq $environment "local") (eq .chezmoi.os "darwin") (eq $profile "work") }}
+{{ toToml (dict "wrappers" .mise_work_wrappers) }}
+{{- end }}
 [settings.github]
 credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
 
 [tool_alias]
-{{ template "mise_aliases" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "distro_codename" $distro_codename }}
+{{ template "mise_aliases" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "profile" $profile "distro_codename" $distro_codename }}
 
 [tools]
 # === Filtered mise tools (from .chezmoidata.yaml) ===
-{{ template "mise_plain_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "distro_codename" $distro_codename }}
-{{ template "mise_structured_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "distro_codename" $distro_codename }}
+{{ template "mise_plain_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "profile" $profile "distro_codename" $distro_codename }}
+{{ template "mise_structured_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "profile" $profile "distro_codename" $distro_codename }}
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
 lockfile = true

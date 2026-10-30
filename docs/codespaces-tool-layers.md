@@ -21,6 +21,13 @@ mise_tools:
       os: [linux]
       environment: [codespace, devcontainer]
       distro_codename: [focal]
+  - name: rust
+    options:
+      mr_boxington: true
+    filters:
+      os: [darwin]
+      environment: [local]
+      profile: [work]
   - name: "github:ogulcancelik/herdr"
     version: latest
     variants:
@@ -40,6 +47,8 @@ Object fields:
 - `alias`: optional `[tool_alias]` value
 - `version`: optional version, defaults to `latest`
 - `asset_pattern`, `bin`, and `bin_path`: optional structured mise tool settings
+- `options`: optional scalar backend-specific settings rendered with the tool;
+  do not repeat the structured fields above or `version`
 - `filters`: optional match rules
 - `variants`: optional list of per-environment overrides merged with the
   parent entry before rendering
@@ -58,6 +67,7 @@ match everywhere.
 |--------|--------|
 | `os` | Go OS values such as `darwin` or `linux` |
 | `environment` | `local`, `codespace`, or `devcontainer` |
+| `profile` | Machine profile: `work` or `personal` |
 | `repo` | Exact `org/repo`, org prefix `org/*`, or catch-all `*` |
 | `distro_codename` | Linux distribution codename such as `focal` |
 | `not_distro_codename` | Exclude Linux distribution codenames such as `focal` |
@@ -90,3 +100,5 @@ DEVCONTAINER=true GITHUB_REPOSITORY=github/github chezmoi cat ~/.config/mise/con
 - Prefer `github:` tools with `matching=musl` for Codespaces and devcontainers
   to avoid glibc issues.
 - `repo: ["github/*"]` preserves the previous org-wide Codespaces layer behavior.
+- `mise_work_wrappers` configures the Cargo wrapper only for local work macOS
+  machines.

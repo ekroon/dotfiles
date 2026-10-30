@@ -17,6 +17,12 @@ homebrew_bundle:
 mise_update_policy:
   minimum_release_age: "7d"
 
+mise_work_wrappers:
+  cargo:
+    command: "mbx"
+    env:
+      MBX_CARGO_SHIM_MODE: "1"
+
 mise_tools:
   - fzf
   - lua
@@ -143,6 +149,40 @@ mise_tools:
     filters:
       os: [darwin]
       environment: [local]
+  - name: "npm:wgc"
+    filters:
+      os: [darwin]
+      environment: [local]
+      profile: [work]
+  - name: "github:github/feature-flags-mcp-server"
+    filters:
+      os: [darwin]
+      environment: [local]
+      profile: [work]
+  - name: python
+    filters:
+      os: [darwin]
+      environment: [local]
+      profile: [work]
+  - name: rust
+    options:
+      mr_boxington: true
+    filters:
+      os: [darwin]
+      environment: [local]
+      profile: [work]
+  - name: mr-boxington
+    options:
+      workflow: "release.yml@refs/heads/main"
+    filters:
+      os: [darwin]
+      environment: [local]
+      profile: [work]
+  - name: direnv
+    filters:
+      os: [darwin]
+      environment: [local]
+      profile: [work]
   - name: ripgrep-all
     filters:
       environment: [codespace]
