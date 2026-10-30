@@ -47,6 +47,12 @@ for setup_template in "$repo_root"/root/run_once_after_01_{configuration,go_envi
     exit 1
   fi
 done
+apm_target="03_apm_skills"
+first_target="$(printf '%s\n' "$install_target" "$apm_target" | LC_ALL=C sort | head -n 1)"
+if [ "$first_target" != "$install_target" ]; then
+  echo "Mise installation must run before APM skills" >&2
+  exit 1
+fi
 
 render_config() {
   local config
@@ -69,10 +75,14 @@ assert_contains "$local_config" $'[tools."npm:@github/copilot"]\nversion = "late
 assert_contains "$local_config" '[settings.status]'
 assert_contains "$local_config" 'missing_tools = "never"'
 assert_contains "$local_config" '"github:golangci/golangci-lint" = "latest"'
+assert_contains "$local_config" $'[tools."apm"]\nversion = "latest"\nasset_pattern = "apm-{{ os(macos=\\\"darwin\\\") }}-{{ arch(x64=\\\"x86_64\\\", arm64=\\\"arm64\\\") }}.tar.gz"'
+assert_not_contains "$local_config" '"npm:rosie-skills"'
 assert_not_contains "$local_config" '"npm:wgc"'
 
 linux_config="$(render_config linux false "" false)"
 assert_contains "$linux_config" 'minimum_release_age = "7d"'
+assert_contains "$linux_config" $'[tools."apm"]\nversion = "latest"\nasset_pattern = "apm-{{ os(macos=\\\"darwin\\\") }}-{{ arch(x64=\\\"x86_64\\\", arm64=\\\"arm64\\\") }}.tar.gz"'
+assert_not_contains "$linux_config" '"npm:rosie-skills"'
 assert_not_contains "$linux_config" '[tools."npm:@github/copilot"]'
 assert_not_contains "$linux_config" '"github:golangci/golangci-lint"'
 assert_not_contains "$linux_config" '"gh" = "latest"'
@@ -167,5 +177,97 @@ actual_upgrade_call="$(cat "$tmp_dir/upgrade.log")"
 if [ "$actual_upgrade_call" != "$expected_upgrade_call" ]; then
   echo "Unexpected mise upgrade call:" >&2
   echo "$actual_upgrade_call" >&2
+  exit 1
+fi
+
+apm_script="$(chezmoi execute-template < "$repo_root/root/run_after_03_apm_skills.sh.tmpl")"
+printf '%s\n' "$apm_script" > "$tmp_dir/apm-install.sh"
+bash -n "$tmp_dir/apm-install.sh"
+
+mkdir -p "$tmp_dir/apm-bin"
+cat > "$tmp_dir/apm-bin/mise" <<'EOF'
+#!/bin/bash
+if [ "$*" != "exec -- apm install --global --only=apm" ]; then
+  echo "Unexpected mise invocation: $*" >&2
+  exit 1
+fi
+if [ "${GITHUB_TOKEN:-}" != "test-apm-token" ]; then
+  echo "APM did not receive GitHub authentication" >&2
+  exit 1
+fi
+printf '%s\n' "$*" >> "${APM_TEST_LOG}"
+EOF
+chmod +x "$tmp_dir/apm-bin/mise"
+
+cat > "$tmp_dir/apm-bin/gh" <<'EOF'
+#!/bin/bash
+if [ "$*" = "auth token --hostname github.com" ]; then
+  echo "test-apm-token"
+  exit 0
+fi
+exit 1
+EOF
+chmod +x "$tmp_dir/apm-bin/gh"
+
+apm_home="$tmp_dir/apm-home"
+mkdir -p "$apm_home/.agents/skills" "$apm_home/.pi/skills"
+apm_skill_names=(
+  agentic-progressive-disclosure-architecture
+  azure-kusto
+  crabbox
+  create-pr
+  find-skills
+  git-commit
+  gh-stack
+  grill-me
+  grilling
+  handoff
+  playwright-cli
+  pretty-mermaid
+  skill-creator
+  tabctl
+  splunk-log-analysis
+)
+for skill_name in "${apm_skill_names[@]}"; do
+  skill_path="$apm_home/.agents/skills/$skill_name"
+  if [ "$skill_name" = "splunk-log-analysis" ]; then
+    work_skill="$apm_home/.local/share/agent-skills/github-ekroon/agent-skills/skills/owned/$skill_name"
+    mkdir -p "$work_skill"
+    ln -s "../../.local/share/agent-skills/github-ekroon/agent-skills/skills/owned/$skill_name" "$skill_path"
+  else
+    mkdir -p "$skill_path"
+  fi
+  ln -s "../../.agents/skills/$skill_name" "$apm_home/.pi/skills/$skill_name"
+done
+git -C "$apm_home/.local/share/agent-skills/github-ekroon" init -q
+
+GITHUB_APM_PAT="" GITHUB_TOKEN="" \
+  APM_TEST_LOG="$tmp_dir/apm-install.log" \
+  HOME="$apm_home" PATH="$tmp_dir/apm-bin:$PATH" bash "$tmp_dir/apm-install.sh"
+if [ ! -f "$apm_home/.local/state/dotfiles-agent-skills/apm-handoff-v1" ]; then
+  echo "APM handoff marker was not created" >&2
+  exit 1
+fi
+if [ -e "$apm_home/.local/share/agent-skills/github-ekroon" ]; then
+  echo "Clean work skill checkout was not removed" >&2
+  exit 1
+fi
+for skill_name in "${apm_skill_names[@]}"; do
+  if [ -e "$apm_home/.agents/skills/$skill_name" ] || [ -L "$apm_home/.agents/skills/$skill_name" ]; then
+    echo "Rosie skill was not removed before APM installation: $skill_name" >&2
+    exit 1
+  fi
+  if [ -e "$apm_home/.pi/skills/$skill_name" ] || [ -L "$apm_home/.pi/skills/$skill_name" ]; then
+    echo "Rosie Pi alias was not removed: $skill_name" >&2
+    exit 1
+  fi
+done
+
+mkdir -p "$apm_home/.agents/skills/user-skill"
+GITHUB_APM_PAT="" GITHUB_TOKEN="" \
+  APM_TEST_LOG="$tmp_dir/apm-install.log" \
+  HOME="$apm_home" PATH="$tmp_dir/apm-bin:$PATH" bash "$tmp_dir/apm-install.sh"
+if [ ! -d "$apm_home/.agents/skills/user-skill" ]; then
+  echo "APM handoff removed files on a subsequent apply" >&2
   exit 1
 fi

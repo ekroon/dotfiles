@@ -1,0 +1,62 @@
+{{- $machine := get . "machine" | default dict -}}
+{{- $profile := get $machine "profile" | default "" -}}
+{{- if not (has $profile (list "work" "personal")) -}}
+{{-   fail (printf "unsupported or missing machine profile %q" $profile) -}}
+{{- end -}}
+{{- $workSkills := .agent_skills.work_skills -}}
+name: erwin-agent-skills
+version: 1.0.0
+targets: [copilot]
+# Dependencies track their upstream default branches. `apm update -g` reviews
+# ref changes and updates the per-machine lock; installs replay those pins.
+dependencies:
+  apm:
+    - git: https://github.com/ekroon/copilot-catalog.git
+      path: skills/agentic-progressive-disclosure-architecture
+      ref: main
+    - git: https://github.com/microsoft/azure-skills.git
+      path: skills/azure-kusto
+      ref: main
+    - git: https://github.com/openclaw/crabbox.git
+      path: .agents/skills/crabbox
+      ref: main
+    - git: https://github.com/ekroon/copilot-catalog.git
+      path: skills/create-pr
+      ref: main
+    - git: https://github.com/vercel-labs/skills.git
+      path: skills/find-skills
+      ref: main
+    - git: https://github.com/ekroon/tabctl.git
+      path: .agents/skills/git-commit
+      ref: main
+    - git: https://github.com/github/gh-stack.git
+      path: skills/gh-stack
+      ref: main
+    - git: https://github.com/mattpocock/skills.git
+      path: skills/productivity/grill-me
+      ref: main
+    - git: https://github.com/mattpocock/skills.git
+      path: skills/productivity/grilling
+      ref: main
+    - git: https://github.com/mattpocock/skills.git
+      path: skills/productivity/handoff
+      ref: main
+    - git: https://github.com/microsoft/playwright-cli.git
+      path: skills/playwright-cli
+      ref: main
+    - git: https://github.com/imxv/Pretty-mermaid-skills.git
+      alias: pretty-mermaid
+      ref: main
+    - git: https://github.com/anthropics/skills.git
+      path: skills/skill-creator
+      ref: main
+    - git: https://github.com/ekroon/tabctl.git
+      path: skills/tabctl
+      ref: main
+{{- if eq $profile "work" }}
+{{- range $workSkills.skills }}
+    - git: {{ $workSkills.repository | quote }}
+      path: {{ printf "%s/%s" $workSkills.path . | quote }}
+      ref: {{ $workSkills.ref | quote }}
+{{- end }}
+{{- end }}

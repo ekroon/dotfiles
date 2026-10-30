@@ -1,0 +1,180 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ -z "${HOME:-}" ] || [ "$HOME" = "/" ]; then
+  echo "HOME is missing or unsafe; refusing APM skill migration" >&2
+  exit 1
+fi
+
+state_dir="${HOME}/.local/state/dotfiles-agent-skills"
+migration_marker="${state_dir}/apm-handoff-v1"
+skills_dir="${HOME}/.agents/skills"
+pi_skills_dir="${HOME}/.pi/skills"
+pi_agent_skills_dir="${HOME}/.pi/agent/skills"
+pi_agent_skill="${HOME}/.pi/agent/skills/splunk-log-analysis"
+work_checkout="${HOME}/.local/share/agent-skills/github-ekroon"
+rosie_cache="${HOME}/.cache/rosie"
+
+skill_names=(
+  agentic-progressive-disclosure-architecture
+  azure-kusto
+  crabbox
+  create-pr
+  find-skills
+  git-commit
+  gh-stack
+  grill-me
+  grilling
+  handoff
+  playwright-cli
+  pretty-mermaid
+  skill-creator
+  tabctl
+  splunk-log-analysis
+)
+
+remove_legacy_skills() {
+  local skill_name
+  local skill_path
+  local pi_link
+  local resolved_target
+
+  absolute_link_target() {
+    local path="$1"
+    local target
+    local component
+    local -a components
+    local -a normalized
+
+    target="$(readlink "${path}")" || return 1
+    case "${target}" in
+      /*) ;;
+      *) target="$(dirname "${path}")/${target}" ;;
+    esac
+
+    IFS="/" read -r -a components <<< "${target}"
+    normalized=()
+    for component in "${components[@]}"; do
+      case "${component}" in
+        "" | .) ;;
+        ..)
+          if [ "${#normalized[@]}" -gt 0 ]; then
+            unset "normalized[${#normalized[@]}-1]"
+          fi
+          ;;
+        *)
+          normalized[${#normalized[@]}]="${component}"
+          ;;
+      esac
+    done
+
+    if [ "${#normalized[@]}" -eq 0 ]; then
+      printf '/\n'
+    else
+      local IFS="/"
+      printf '/%s\n' "${normalized[*]}"
+    fi
+  }
+
+  if [ -L "${HOME}/.agents" ] || [ -L "${skills_dir}" ]; then
+    echo "Refusing to migrate through a symlinked .agents skills directory" >&2
+    return 1
+  fi
+
+  if [ -d "${pi_skills_dir}" ] && [ ! -L "${pi_skills_dir}" ]; then
+    for skill_name in "${skill_names[@]}"; do
+      pi_link="${pi_skills_dir}/${skill_name}"
+      if [ -L "${pi_link}" ]; then
+        resolved_target="$(absolute_link_target "${pi_link}")"
+        if [ "${resolved_target}" = "${skills_dir}/${skill_name}" ]; then
+          rm -f -- "${pi_link}"
+        fi
+      fi
+    done
+  fi
+
+  if [ -d "${pi_agent_skills_dir}" ] && [ ! -L "${pi_agent_skills_dir}" ] && [ -L "${pi_agent_skill}" ]; then
+    resolved_target="$(absolute_link_target "${pi_agent_skill}")"
+    case "${resolved_target}" in
+      "${rosie_cache}/"* | "${work_checkout}/"*)
+        rm -f -- "${pi_agent_skill}"
+        ;;
+    esac
+  fi
+
+  for skill_name in "${skill_names[@]}"; do
+    skill_path="${skills_dir}/${skill_name}"
+    if [ -L "${skill_path}" ]; then
+      resolved_target="$(absolute_link_target "${skill_path}")"
+      case "${resolved_target}" in
+        "${rosie_cache}/"*)
+          rm -f -- "${skill_path}"
+          ;;
+        "${work_checkout}/agent-skills/skills/owned/splunk-log-analysis")
+          if [ "${skill_name}" != "splunk-log-analysis" ]; then
+            echo "Unexpected Rosie checkout link: ${skill_path}" >&2
+            return 1
+          fi
+          rm -f -- "${skill_path}"
+          ;;
+        *)
+          echo "Refusing to remove an unrecognized skill symlink: ${skill_path}" >&2
+          return 1
+          ;;
+      esac
+    elif [ -d "${skill_path}" ]; then
+      rm -rf -- "${skill_path}"
+    elif [ -e "${skill_path}" ]; then
+      echo "Refusing to remove an unexpected skill entry: ${skill_path}" >&2
+      return 1
+    fi
+  done
+}
+
+if [ ! -f "${migration_marker}" ]; then
+  mkdir -p "${state_dir}"
+  remove_legacy_skills
+fi
+
+if [ -z "${GITHUB_APM_PAT:-}" ] && [ -z "${GITHUB_TOKEN:-}" ] && command -v gh >/dev/null 2>&1; then
+  GITHUB_TOKEN="$(gh auth token --hostname github.com)" || {
+    echo "Unable to obtain GitHub credentials for APM" >&2
+    exit 1
+  }
+  if [ -z "${GITHUB_TOKEN}" ]; then
+    echo "GitHub CLI returned an empty token for APM" >&2
+    exit 1
+  fi
+  export GITHUB_TOKEN
+fi
+
+if command -v mise >/dev/null 2>&1; then
+  mise exec -- apm install --global --only=apm
+elif command -v apm >/dev/null 2>&1; then
+  apm install --global --only=apm
+else
+  echo "APM is unavailable; install the managed mise tool before applying skills" >&2
+  exit 1
+fi
+
+if [ ! -f "${migration_marker}" ]; then
+  marker_tmp="${migration_marker}.tmp.$$"
+  printf 'APM owns the user skill set.\n' > "${marker_tmp}"
+  mv -f -- "${marker_tmp}" "${migration_marker}"
+fi
+
+if [ -e "${work_checkout}" ] || [ -L "${work_checkout}" ]; then
+  if [ -L "${work_checkout}" ] || { [ ! -d "${work_checkout}/.git" ] && [ ! -f "${work_checkout}/.git" ]; }; then
+    echo "Refusing to remove a non-Git work skill checkout: ${work_checkout}" >&2
+    exit 1
+  fi
+  checkout_status="$(git -C "${work_checkout}" status --porcelain --untracked-files=all)" || {
+    echo "Unable to inspect work skill checkout: ${work_checkout}" >&2
+    exit 1
+  }
+  if [ -n "${checkout_status}" ]; then
+    echo "Preserving modified work skill checkout: ${work_checkout}" >&2
+  else
+    rm -rf -- "${work_checkout}"
+  fi
+fi

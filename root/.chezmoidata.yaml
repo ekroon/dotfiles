@@ -123,7 +123,9 @@ mise_tools:
     filters:
       os: [darwin]
       environment: [local]
-  - name: "npm:rosie-skills"
+  - name: apm
+    alias: "github:microsoft/apm"
+    asset_pattern: 'apm-{{ os(macos="darwin") }}-{{ arch(x64="x86_64", arm64="arm64") }}.tar.gz'
   - name: "github:ekroon/copilot-token-cost"
     filters:
       os: [darwin]
@@ -167,7 +169,9 @@ mise_tools:
 
 # Agent skill management
 agent_skills:
-  work_catalog:
+  work_skills:
     repository: "https://github.com/github/ekroon.git"
-    checkout_path: ".local/share/agent-skills/github-ekroon"
-    catalog_path: "agent-skills/.agents/skills"
+    ref: "main"
+    path: "agent-skills/skills/owned"
+    skills:
+      - splunk-log-analysis
