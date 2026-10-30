@@ -60,7 +60,7 @@ render_config() {
     DEVCONTAINER="$4" MISE_DISTRO_CODENAME=jammy \
       chezmoi --source "$repo_root" \
         --override-data "{\"chezmoi\":{\"os\":\"$1\"},\"codespaces\":$2,\"repo\":\"$3\"}" \
-        execute-template < "$repo_root/root/private_dot_config/mise/config.toml.tmpl"
+        execute-template < "$repo_root/root/private_dot_config/mise/private_config.toml.tmpl"
   )" || return
   printf '%s\n' "$config" > "$tmp_dir/config.toml"
   MISE_CONFIG_DIR="$tmp_dir" mise --cd "$tmp_dir" config ls >/dev/null || return
@@ -108,7 +108,7 @@ install_script="$(
   chezmoi execute-template < "$install_template"
 )"
 rendered_config_hash="$(
-  printf '{{ includeTemplate "private_dot_config/mise/config.toml.tmpl" . | sha256sum }}\n' |
+  printf '{{ includeTemplate "private_dot_config/mise/private_config.toml.tmpl" . | sha256sum }}\n' |
     chezmoi execute-template
 )"
 assert_contains "$install_script" "# mise config hash: $rendered_config_hash"
