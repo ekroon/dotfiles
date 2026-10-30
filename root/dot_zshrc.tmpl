@@ -19,11 +19,6 @@ then
   plugins+=rails
 fi
 
-if command -v rbenv &> /dev/null
-then
-  plugins+=rbenv
-fi
-
 if [[ "$IS_AGENT" != "1" ]]; then
     plugins+=atuin
 fi
@@ -53,4 +48,3 @@ eval "$(zoxide init zsh)"
 export PATH="$PATH:/Users/erwin/.lmstudio/bin"
 # End of LM Studio CLI section
 {{- end }}
-
