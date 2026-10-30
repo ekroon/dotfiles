@@ -240,15 +240,27 @@ bash -n "$tmp_dir/apm-install.sh"
 mkdir -p "$tmp_dir/apm-bin"
 cat > "$tmp_dir/apm-bin/mise" <<'EOF'
 #!/bin/bash
-if [ "$*" != "exec -- apm install --global --only=apm" ]; then
-  echo "Unexpected mise invocation: $*" >&2
-  exit 1
-fi
-if [ "${GITHUB_TOKEN:-}" != "test-apm-token" ]; then
-  echo "APM did not receive GitHub authentication" >&2
-  exit 1
-fi
-printf '%s\n' "$*" >> "${APM_TEST_LOG}"
+case "$*" in
+  "exec -- apm install --global --only=apm")
+    if [ "${GITHUB_TOKEN:-}" != "test-apm-token" ]; then
+      echo "APM did not receive GitHub authentication" >&2
+      exit 1
+    fi
+    printf '%s\n' "$*" >> "${APM_TEST_LOG}"
+    ;;
+  "ls --installed --no-header npm:rosie-skills")
+    if ! grep -q '^uninstall --yes --all npm:rosie-skills$' "${APM_TEST_LOG}" 2>/dev/null; then
+      echo "npm:rosie-skills 0.8.5"
+    fi
+    ;;
+  "uninstall --yes --all npm:rosie-skills")
+    printf '%s\n' "$*" >> "${APM_TEST_LOG}"
+    ;;
+  *)
+    echo "Unexpected mise invocation: $*" >&2
+    exit 1
+    ;;
+esac
 EOF
 chmod +x "$tmp_dir/apm-bin/mise"
 
@@ -264,6 +276,7 @@ chmod +x "$tmp_dir/apm-bin/gh"
 
 apm_home="$tmp_dir/apm-home"
 mkdir -p "$apm_home/.agents/skills" "$apm_home/.pi/skills"
+printf '# rosie-lock v1\n' > "$apm_home/.agents/rosie.lock"
 apm_skill_names=(
   agentic-progressive-disclosure-architecture
   azure-kusto
@@ -305,6 +318,14 @@ if [ -e "$apm_home/.local/share/agent-skills/github-ekroon" ]; then
   echo "Clean work skill checkout was not removed" >&2
   exit 1
 fi
+if [ -e "$apm_home/.agents/rosie.lock" ]; then
+  echo "Rosie lockfile was not removed" >&2
+  exit 1
+fi
+if ! grep -q '^uninstall --yes --all npm:rosie-skills$' "$tmp_dir/apm-install.log"; then
+  echo "Installed Rosie tool was not uninstalled" >&2
+  exit 1
+fi
 for skill_name in "${apm_skill_names[@]}"; do
   if [ -e "$apm_home/.agents/skills/$skill_name" ] || [ -L "$apm_home/.agents/skills/$skill_name" ]; then
     echo "Rosie skill was not removed before APM installation: $skill_name" >&2
@@ -322,5 +343,9 @@ GITHUB_APM_PAT="" GITHUB_TOKEN="" \
   HOME="$apm_home" PATH="$tmp_dir/apm-bin:$PATH" bash "$tmp_dir/apm-install.sh"
 if [ ! -d "$apm_home/.agents/skills/user-skill" ]; then
   echo "APM handoff removed files on a subsequent apply" >&2
+  exit 1
+fi
+if [ "$(grep -c '^uninstall --yes --all npm:rosie-skills$' "$tmp_dir/apm-install.log")" -ne 1 ]; then
+  echo "Rosie tool uninstall was repeated after the first apply" >&2
   exit 1
 fi

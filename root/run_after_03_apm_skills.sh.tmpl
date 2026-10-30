@@ -14,6 +14,7 @@ pi_agent_skills_dir="${HOME}/.pi/agent/skills"
 pi_agent_skill="${HOME}/.pi/agent/skills/splunk-log-analysis"
 work_checkout="${HOME}/.local/share/agent-skills/github-ekroon"
 rosie_cache="${HOME}/.cache/rosie"
+rosie_lock="${HOME}/.agents/rosie.lock"
 
 skill_names=(
   agentic-progressive-disclosure-architecture
@@ -155,6 +156,24 @@ elif command -v apm >/dev/null 2>&1; then
 else
   echo "APM is unavailable; install the managed mise tool before applying skills" >&2
   exit 1
+fi
+
+if [ -f "${rosie_lock}" ]; then
+  if [ "$(head -n 1 "${rosie_lock}")" = "# rosie-lock v1" ]; then
+    rm -f -- "${rosie_lock}"
+  else
+    echo "Preserving unrecognized file at former Rosie lock path: ${rosie_lock}" >&2
+  fi
+fi
+
+if command -v mise >/dev/null 2>&1; then
+  installed_rosie="$(mise ls --installed --no-header npm:rosie-skills)" || {
+    echo "Unable to inspect installed Rosie skill manager" >&2
+    exit 1
+  }
+  if [ -n "${installed_rosie}" ]; then
+    mise uninstall --yes --all npm:rosie-skills
+  fi
 fi
 
 if [ ! -f "${migration_marker}" ]; then
