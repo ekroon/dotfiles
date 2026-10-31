@@ -174,10 +174,6 @@ mise_tools:
   - name: mr-boxington
     options:
       workflow: "release.yml@refs/heads/main"
-    filters:
-      os: [darwin]
-      environment: [local]
-      profile: [work]
   - name: direnv
     filters:
       os: [darwin]

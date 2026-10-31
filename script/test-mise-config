@@ -93,7 +93,7 @@ assert_not_contains "$personal_config" '"github:github/feature-flags-mcp-server"
 assert_not_contains "$personal_config" '"python" = "latest"'
 assert_not_contains "$personal_config" '"direnv" = "latest"'
 assert_not_contains "$personal_config" '[tools."rust"]'
-assert_not_contains "$personal_config" '[tools."mr-boxington"]'
+assert_contains "$personal_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
 assert_not_contains "$personal_config" '[wrappers.cargo]'
 
 linux_config="$(render_config linux false "" false)"
@@ -104,6 +104,7 @@ assert_not_contains "$linux_config" '[tools."npm:@github/copilot"]'
 assert_not_contains "$linux_config" '"github:golangci/golangci-lint"'
 assert_not_contains "$linux_config" '"gh" = "latest"'
 assert_not_contains "$linux_config" '"npm:wgc"'
+assert_contains "$linux_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
 assert_not_contains "$linux_config" '[wrappers.cargo]'
 
 codespace_config="$(render_config linux true github/github false)"
@@ -113,6 +114,7 @@ assert_contains "$codespace_config" $'[tools."npm:@github/copilot"]\nversion = "
 assert_not_contains "$codespace_config" '"github:golangci/golangci-lint"'
 assert_contains "$codespace_config" '"gh" = "latest"'
 assert_not_contains "$codespace_config" '"npm:wgc"'
+assert_contains "$codespace_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
 assert_not_contains "$codespace_config" '[wrappers.cargo]'
 
 devcontainer_config="$(render_config linux false github/github true)"
@@ -121,6 +123,7 @@ assert_not_contains "$devcontainer_config" '[tools."npm:@github/copilot"]'
 assert_not_contains "$devcontainer_config" '"github:golangci/golangci-lint"'
 assert_contains "$devcontainer_config" '"gh" = "latest"'
 assert_not_contains "$devcontainer_config" '"npm:wgc"'
+assert_contains "$devcontainer_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
 assert_not_contains "$devcontainer_config" '[wrappers.cargo]'
 
 render_custom_config() {
