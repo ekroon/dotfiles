@@ -82,19 +82,14 @@ assert_contains "$local_config" '"npm:wgc" = "latest"'
 assert_contains "$local_config" '"github:github/feature-flags-mcp-server" = "latest"'
 assert_contains "$local_config" '"python" = "latest"'
 assert_contains "$local_config" '"direnv" = "latest"'
-assert_contains "$local_config" $'[tools."rust"]\nversion = "latest"\nmr_boxington = true'
-assert_contains "$local_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
-assert_contains "$local_config" '[wrappers.cargo]'
-assert_contains "$local_config" 'MBX_CARGO_SHIM_MODE = "1"'
+assert_contains "$local_config" '"rust" = "latest"'
 
 personal_config="$(render_config darwin false "" false personal)"
 assert_not_contains "$personal_config" '"npm:wgc"'
 assert_not_contains "$personal_config" '"github:github/feature-flags-mcp-server"'
 assert_not_contains "$personal_config" '"python" = "latest"'
 assert_not_contains "$personal_config" '"direnv" = "latest"'
-assert_not_contains "$personal_config" '[tools."rust"]'
-assert_contains "$personal_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
-assert_not_contains "$personal_config" '[wrappers.cargo]'
+assert_not_contains "$personal_config" '"rust" = "latest"'
 
 linux_config="$(render_config linux false "" false)"
 assert_contains "$linux_config" 'minimum_release_age = "7d"'
@@ -104,8 +99,6 @@ assert_not_contains "$linux_config" '[tools."npm:@github/copilot"]'
 assert_not_contains "$linux_config" '"github:golangci/golangci-lint"'
 assert_not_contains "$linux_config" '"gh" = "latest"'
 assert_not_contains "$linux_config" '"npm:wgc"'
-assert_contains "$linux_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
-assert_not_contains "$linux_config" '[wrappers.cargo]'
 
 codespace_config="$(render_config linux true github/github false)"
 assert_contains "$codespace_config" 'minimum_release_age = "7d"'
@@ -114,8 +107,6 @@ assert_contains "$codespace_config" $'[tools."npm:@github/copilot"]\nversion = "
 assert_not_contains "$codespace_config" '"github:golangci/golangci-lint"'
 assert_contains "$codespace_config" '"gh" = "latest"'
 assert_not_contains "$codespace_config" '"npm:wgc"'
-assert_contains "$codespace_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
-assert_not_contains "$codespace_config" '[wrappers.cargo]'
 
 devcontainer_config="$(render_config linux false github/github true)"
 assert_contains "$devcontainer_config" 'minimum_release_age = "7d"'
@@ -123,8 +114,18 @@ assert_not_contains "$devcontainer_config" '[tools."npm:@github/copilot"]'
 assert_not_contains "$devcontainer_config" '"github:golangci/golangci-lint"'
 assert_contains "$devcontainer_config" '"gh" = "latest"'
 assert_not_contains "$devcontainer_config" '"npm:wgc"'
-assert_contains "$devcontainer_config" $'[tools."mr-boxington"]\nversion = "latest"\nworkflow = "release.yml@refs/heads/main"'
-assert_not_contains "$devcontainer_config" '[wrappers.cargo]'
+
+personal_linux_config="$(render_config linux false "" false personal)"
+for config in "$local_config" "$personal_config" "$linux_config" "$codespace_config" "$devcontainer_config" "$personal_linux_config"; do
+  assert_contains "$config" 'min_version = "2026.8.16"'
+  assert_contains "$config" 'idiomatic_version_file_enable_tools = ["node", "rust"]'
+  assert_contains "$config" '"mr-boxington" = "latest"'
+  assert_not_contains "$config" '[tools."mr-boxington"]'
+  assert_contains "$config" '[wrappers.cargo]'
+  assert_contains "$config" 'command = "mbx"'
+  assert_contains "$config" 'MBX_CARGO_SHIM_MODE = "1"'
+  assert_not_contains "$config" 'mbx setup'
+done
 
 render_custom_config() {
   local profile="$1"
@@ -170,6 +171,8 @@ rendered_config_hash="$(
 assert_contains "$install_script" "# mise config hash: $rendered_config_hash"
 assert_contains "$install_script" "mise lock --global --platform \"\${mise_platform}\" --quiet >/dev/null"
 assert_contains "$install_script" 'mise install --yes --quiet >/dev/null'
+assert_not_contains "$install_script" 'mbx setup'
+assert_contains "$install_script" 'mise reshim --quiet >/dev/null'
 
 mkdir -p "$tmp_dir/bin"
 cat > "$tmp_dir/bin/mise" <<'EOF'
@@ -198,7 +201,7 @@ chmod +x "$tmp_dir/bin/gh"
 
 printf '%s\n' "$install_script" > "$tmp_dir/install.sh"
 GITHUB_TOKEN="" GH_TOKEN="" MISE_TEST_LOG="$tmp_dir/install.log" PATH="$tmp_dir/bin:$PATH" bash "$tmp_dir/install.sh"
-expected_install_calls=$'lock --global --platform macos-arm64 --quiet\ninstall --yes --quiet'
+expected_install_calls=$'lock --global --platform macos-arm64 --quiet\ninstall --yes --quiet\nreshim --quiet'
 actual_install_calls="$(cat "$tmp_dir/install.log")"
 if [ "$actual_install_calls" != "$expected_install_calls" ]; then
   echo "Unexpected mise install calls:" >&2

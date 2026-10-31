@@ -257,9 +257,10 @@ minimum_release_age = {{ $minimum_release_age | quote }}
 {{- $distro_codename = output "sh" "-c" "sed -n 's/^VERSION_CODENAME=//p' /etc/os-release 2>/dev/null | tr -d '\"' | head -n1" | trim -}}
 {{- end -}}
 {{- $profile := get (get . "machine" | default dict) "profile" | default "" -}}
-{{- if and (eq $environment "local") (eq .chezmoi.os "darwin") (eq $profile "work") }}
-{{ toToml (dict "wrappers" .mise_work_wrappers) }}
-{{- end }}
+min_version = "2026.8.16"
+
+{{ toToml (dict "wrappers" .mise_wrappers) }}
+
 [settings.github]
 credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
 
@@ -271,7 +272,7 @@ credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
 {{ template "mise_plain_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "profile" $profile "distro_codename" $distro_codename }}
 {{ template "mise_structured_tools" dict "tools" .mise_tools "environment" $environment "os" .chezmoi.os "repo" .repo "profile" $profile "distro_codename" $distro_codename }}
 [settings]
-idiomatic_version_file_enable_tools = ["node"]
+idiomatic_version_file_enable_tools = ["node", "rust"]
 lockfile = true
 minimum_release_age = {{ .mise_update_policy.minimum_release_age | quote }}
 

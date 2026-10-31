@@ -22,12 +22,11 @@ mise_tools:
       environment: [codespace, devcontainer]
       distro_codename: [focal]
   - name: rust
-    options:
-      mr_boxington: true
     filters:
       os: [darwin]
       environment: [local]
       profile: [work]
+  - mr-boxington
   - name: "github:ogulcancelik/herdr"
     version: latest
     variants:
@@ -100,5 +99,13 @@ DEVCONTAINER=true GITHUB_REPOSITORY=github/github chezmoi cat ~/.config/mise/con
 - Prefer `github:` tools with `matching=musl` for Codespaces and devcontainers
   to avoid glibc issues.
 - `repo: ["github/*"]` preserves the previous org-wide Codespaces layer behavior.
-- `mise_work_wrappers` configures the Cargo wrapper only for local work macOS
-  machines.
+- Mr Boxington and `mise_wrappers` enable Cargo wrapping on every machine,
+  requiring mise 2026.8.16 or newer. Rust installation retains its work-profile
+  macOS filter; the wrapper also works with Rust installed outside mise.
+- The install hook runs `mise reshim` to refresh the Cargo wrapper, without
+  running `mbx setup` or modifying rust-analyzer settings.
+- Rust version-file detection is enabled so project `rust-toolchain.toml` pins
+  take precedence over the global default toolchain; wrapping remains active.
+- Cargo must run through mise activation, mise shims on `PATH`, or
+  `mise exec -- cargo ...`. The standalone shim is not required; verify wrapping
+  with actual cache hits rather than only `mbx doctor`'s setup check.

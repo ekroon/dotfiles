@@ -17,7 +17,7 @@ homebrew_bundle:
 mise_update_policy:
   minimum_release_age: "7d"
 
-mise_work_wrappers:
+mise_wrappers:
   cargo:
     command: "mbx"
     env:
@@ -165,15 +165,11 @@ mise_tools:
       environment: [local]
       profile: [work]
   - name: rust
-    options:
-      mr_boxington: true
     filters:
       os: [darwin]
       environment: [local]
       profile: [work]
-  - name: mr-boxington
-    options:
-      workflow: "release.yml@refs/heads/main"
+  - mr-boxington
   - name: direnv
     filters:
       os: [darwin]
