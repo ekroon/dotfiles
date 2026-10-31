@@ -38,7 +38,7 @@ local edgeCycler = AppWindowCycler:new({
 edgeCycler:bindHotkey(MEH, "F1")
 
 local devCycler = AppWindowCycler:new({
-  appNames = { "GitHub", "Code - Insiders", "Code", "Ghostty" },
+  appNames = { "GitHub", "Codex", "Code - Insiders", "Code", "Ghostty" },
   appAliases = { GitHub = "GitHub Copilot" },
   launchWhenClosed = false,
 })

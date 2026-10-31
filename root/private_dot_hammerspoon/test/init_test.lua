@@ -124,7 +124,7 @@ M.tests = {
 
       assertEqual(config.approvedOptions.configdir, "/tmp/.hammerspoon", "approved reload config path")
       assertEqual(config.approvedController, config.expectedApprovedController, "approved reload controller")
-      assertEqual(table.concat(cyclers.dev.appNames, ","), "GitHub,Code - Insiders,Code,Ghostty", "F2 apps")
+      assertEqual(table.concat(cyclers.dev.appNames, ","), "GitHub,Codex,Code - Insiders,Code,Ghostty", "F2 apps")
       assertEqual(cyclers.dev.appAliases.GitHub, "GitHub Copilot", "F2 GitHub window alias")
       assertEqual(cyclers.dev.launchWhenClosed, false, "F2 launch behavior")
       assertEqual(table.concat(cyclers.terminal.appNames, ","), "Obsidian", "F4 apps")
