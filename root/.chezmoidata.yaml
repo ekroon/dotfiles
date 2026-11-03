@@ -149,11 +149,6 @@ mise_tools:
     filters:
       os: [darwin]
       environment: [local]
-  - name: "npm:wgc"
-    filters:
-      os: [darwin]
-      environment: [local]
-      profile: [work]
   - name: "github:github/feature-flags-mcp-server"
     filters:
       os: [darwin]
