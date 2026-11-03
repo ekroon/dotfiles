@@ -1,0 +1,28 @@
+{{ if not .codespaces -}}
+#!/bin/bash
+set -e
+
+old_dir="${HOME}/develop/tries"
+new_dir="${HOME}/tries"
+
+if [ ! -e "${old_dir}" ] && [ ! -L "${old_dir}" ]; then
+  exit 0
+fi
+
+if [ -L "${old_dir}" ] || [ ! -d "${old_dir}" ]; then
+  echo "Expected a directory, not a symlink: ${old_dir}" >&2
+  exit 1
+fi
+
+if [ -e "${new_dir}" ] || [ -L "${new_dir}" ]; then
+  if [ -d "${new_dir}" ] && [ ! -L "${new_dir}" ] && rmdir "${new_dir}" 2>/dev/null; then
+    :
+  else
+    echo "Cannot migrate tries: ${new_dir} already exists and is not an empty directory" >&2
+    exit 1
+  fi
+fi
+
+echo "Moving ${old_dir} to ${new_dir}..."
+mv "${old_dir}" "${new_dir}"
+{{ end -}}

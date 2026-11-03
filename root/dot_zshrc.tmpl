@@ -34,7 +34,7 @@ fi
 
 
 {{if not .codespaces -}}
-export TRY_PROJECTS_DIR="~/develop/tries"
+export TRY_PROJECTS_DIR="$HOME/tries"
 {{- end }}
 eval "$(mise x github:ekroon/try@latest -- try init)"
 
