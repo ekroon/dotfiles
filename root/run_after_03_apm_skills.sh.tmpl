@@ -150,13 +150,18 @@ if [ -z "${GITHUB_APM_PAT:-}" ] && [ -z "${GITHUB_TOKEN:-}" ] && command -v gh >
 fi
 
 if command -v mise >/dev/null 2>&1; then
-  mise exec -- apm install --global --only=apm
+  apm_cmd=(mise exec -- apm)
 elif command -v apm >/dev/null 2>&1; then
-  apm install --global --only=apm
+  apm_cmd=(apm)
 else
   echo "APM is unavailable; install the managed mise tool before applying skills" >&2
   exit 1
 fi
+
+{{- range .agent_kit.experimental_features }}
+"${apm_cmd[@]}" experimental enable {{ . | quote }} >/dev/null
+{{- end }}
+"${apm_cmd[@]}" install --global
 
 if [ -f "${rosie_lock}" ]; then
   if [ "$(head -n 1 "${rosie_lock}")" = "# rosie-lock v1" ]; then

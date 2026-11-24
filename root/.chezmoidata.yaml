@@ -194,11 +194,19 @@ mise_tools:
         filters:
           os: [linux]
 
-# Agent skill management
-agent_skills:
-  work_skills:
+# Agent kit (private APM bundles for skills, agents, instructions, extensions, and plugins)
+agent_kit:
+  experimental_features:
+    - canvas
+    - copilot-app
+    - marketplace-authoring
+  allow_executables:
+    - ekroon/agent-kit
+  repository: "https://github.com/ekroon/agent-kit.git"
+  ref: "main"
+  work:
     repository: "https://github.com/github/ekroon.git"
+    path: "agent-skills"
     ref: "main"
-    path: "agent-skills/skills/owned"
-    skills:
-      - splunk-log-analysis
+    allow_executables:
+      - github/ekroon/agent-skills
