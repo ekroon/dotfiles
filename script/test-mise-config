@@ -76,7 +76,7 @@ assert_contains "$local_config" $'[tools."npm:@github/copilot"]\nversion = "late
 assert_contains "$local_config" '[settings.status]'
 assert_contains "$local_config" 'missing_tools = "never"'
 assert_contains "$local_config" '"github:golangci/golangci-lint" = "latest"'
-assert_contains "$local_config" $'[tools."apm"]\nversion = "latest"\nasset_pattern = "apm-{{ os(macos=\\\"darwin\\\") }}-{{ arch(x64=\\\"x86_64\\\", arm64=\\\"arm64\\\") }}.tar.gz"'
+assert_contains "$local_config" $'[tools."apm"]\nversion = "latest"\nasset_pattern = "apm-{{ os(macos=\\\"darwin\\\") }}-{{ arch(x64=\\\"x86_64\\\", arm64=\\\"arm64\\\") }}.tar.gz"\nminimum_release_age = "0s"'
 assert_not_contains "$local_config" '"npm:rosie-skills"'
 assert_not_contains "$local_config" '"npm:wgc"'
 assert_contains "$local_config" '"github:github/feature-flags-mcp-server" = "latest"'
@@ -93,7 +93,7 @@ assert_not_contains "$personal_config" '"rust" = "latest"'
 
 linux_config="$(render_config linux false "" false)"
 assert_contains "$linux_config" 'minimum_release_age = "7d"'
-assert_contains "$linux_config" $'[tools."apm"]\nversion = "latest"\nasset_pattern = "apm-{{ os(macos=\\\"darwin\\\") }}-{{ arch(x64=\\\"x86_64\\\", arm64=\\\"arm64\\\") }}.tar.gz"'
+assert_contains "$linux_config" $'[tools."apm"]\nversion = "latest"\nasset_pattern = "apm-{{ os(macos=\\\"darwin\\\") }}-{{ arch(x64=\\\"x86_64\\\", arm64=\\\"arm64\\\") }}.tar.gz"\nminimum_release_age = "0s"'
 assert_not_contains "$linux_config" '"npm:rosie-skills"'
 assert_not_contains "$linux_config" '[tools."npm:@github/copilot"]'
 assert_not_contains "$linux_config" '"github:golangci/golangci-lint"'
@@ -247,7 +247,10 @@ mkdir -p "$tmp_dir/apm-bin"
 cat > "$tmp_dir/apm-bin/mise" <<'EOF'
 #!/bin/bash
 case "$*" in
-  "exec -- apm install --global --only=apm")
+  "exec -- apm experimental enable canvas" | "exec -- apm experimental enable copilot-app")
+    printf '%s\n' "$*" >> "${APM_TEST_LOG}"
+    ;;
+  "exec -- apm install --global")
     if [ "${GITHUB_TOKEN:-}" != "test-apm-token" ]; then
       echo "APM did not receive GitHub authentication" >&2
       exit 1

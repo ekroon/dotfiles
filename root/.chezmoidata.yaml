@@ -131,6 +131,7 @@ mise_tools:
       environment: [local]
   - name: apm
     alias: "github:microsoft/apm"
+    minimum_release_age: "0s"
     asset_pattern: 'apm-{{ os(macos="darwin") }}-{{ arch(x64="x86_64", arm64="arm64") }}.tar.gz'
   - name: "github:ekroon/copilot-token-cost"
     filters:
@@ -199,9 +200,11 @@ agent_kit:
   experimental_features:
     - canvas
     - copilot-app
-    - marketplace-authoring
   allow_executables:
-    - ekroon/agent-kit
+    "ekroon/agent-kit":
+      canvas: true
+    "ekroon/copilot-catalog/plugins/copilot-cmux":
+      hooks: true
   repository: "https://github.com/ekroon/agent-kit.git"
   ref: "main"
   work:
@@ -209,4 +212,5 @@ agent_kit:
     path: "agent-skills"
     ref: "main"
     allow_executables:
-      - github/ekroon/agent-skills
+      "github/ekroon/agent-skills":
+        mcp: true

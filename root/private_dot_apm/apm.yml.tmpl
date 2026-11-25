@@ -9,12 +9,18 @@ version: 1.0.0
 targets: [copilot]
 executables:
   allow:
-{{- range $agentKit.allow_executables }}
-    - {{ . | quote }}
+{{- range $pkg, $perms := $agentKit.allow_executables }}
+    {{ $pkg | quote }}:
+{{-   range $perm, $enabled := $perms }}
+      {{ $perm }}: {{ $enabled }}
+{{-   end }}
 {{- end }}
 {{- if eq $profile "work" }}
-{{-   range $agentKit.work.allow_executables }}
-    - {{ . | quote }}
+{{-   range $pkg, $perms := $agentKit.work.allow_executables }}
+    {{ $pkg | quote }}:
+{{-     range $perm, $enabled := $perms }}
+      {{ $perm }}: {{ $enabled }}
+{{-     end }}
 {{-   end }}
 {{- end }}
 # Dependencies track their upstream default branches. `apm update -g` reviews
