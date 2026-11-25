@@ -1,0 +1,35 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+set -euo pipefail
+
+# profile hash: {{ includeTemplate "private_dot_config/chrome/opencode-browse.mobileconfig.tmpl" . | sha256sum }}
+PROFILE="${HOME}/.config/chrome/opencode-browse.mobileconfig"
+MANAGED_CHROME="/Library/Managed Preferences/com.google.Chrome.plist"
+
+if [ ! -f "${PROFILE}" ]; then
+  echo "Expected Chrome profile at ${PROFILE}" >&2
+  exit 1
+fi
+
+forcelist_satisfied() {
+  local entry
+  [ -r "${MANAGED_CHROME}" ] || return 1
+  while IFS= read -r entry; do
+    grep -Fq "${entry}" < <(plutil -extract ExtensionInstallForcelist json -o - "${MANAGED_CHROME}" 2>/dev/null | sed 's#\\/#/#g') || return 1
+  done <<'EOF'
+{{- range .chrome_extension_install_forcelist }}
+{{ . }}
+{{- end }}
+EOF
+}
+
+if forcelist_satisfied; then
+  echo "Chrome ExtensionInstallForcelist already managed"
+  exit 0
+fi
+
+# macOS cannot install configuration profiles silently; stage it for approval.
+echo "Staging Chrome OpenCode Browse profile for approval..."
+open "${PROFILE}"
+echo "Approve it in System Settings > General > Device Management, then restart Chrome."
+{{ end -}}
