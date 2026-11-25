@@ -11,6 +11,9 @@ homebrew_bundle:
     - karabiner-elements
   mas_apps: []
 
+chrome_extension_install_forcelist:
+  - "mfnicocicmmlkpjnaffgihfjhdgjkdjg;https://clients2.google.com/service/update2/crx"
+
 # mise tool configuration
 # Tool filters are OR'd within each filter key and AND'd across keys.
 # Missing filters match every environment.
